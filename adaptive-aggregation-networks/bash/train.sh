@@ -3,7 +3,7 @@ PYTHON='/public/home/daijiahao/anaconda3/bin/python'
 for seed in 32 40 50; do
     for init_cls in 10 20 50; do
         increment=${init_cls}
-        if [[ ${init_cls} == 50]] ;then
+        if [[ ${init_cls} == 50 ]] ;then
             increment=10
         fi
         ${PYTHON} ../main.py -nb_cl_fg=${init_cls} --nb_cl=${increment} \

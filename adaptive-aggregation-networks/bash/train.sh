@@ -6,7 +6,7 @@ for seed in 32 40 50; do
         if [[ ${init_cls} == 50 ]] ;then
             increment=10
         fi
-        ${PYTHON} ../main.py -nb_cl_fg=${init_cls} --nb_cl=${increment} \
+        ${PYTHON} ../main.py --nb_cl_fg=${init_cls} --nb_cl=${increment} \
         --gpu=0 --random_seed=${seed} --baseline="lucir" \
         --branch_mode="dual" --branch_1="ss" --branch_2="free" \ 
         --dataset="cifar100"

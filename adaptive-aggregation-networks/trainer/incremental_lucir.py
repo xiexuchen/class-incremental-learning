@@ -136,7 +136,7 @@ def incremental_train_and_eval(the_args, epochs, fusion_vars, ref_fusion_vars, b
                 max_novel_scores = max_novel_scores[hard_index]
                 assert(gt_scores.size() == max_novel_scores.size())
                 assert(gt_scores.size(0) == hard_num)
-                loss3 = nn.MarginRankingLoss(margin=dist)(gt_scores.view(-1, 1), max_novel_scores.view(-1, 1), torch.ones(hard_num*K).to(device)) * lw_mr
+                loss3 = nn.MarginRankingLoss(margin=dist)(gt_scores.view(-1, 1), max_novel_scores.view(-1, 1), torch.ones(hard_num*K).view(-1,1).to(device)) * lw_mr
             else:
                 loss3 = torch.zeros(1).to(device)
 

@@ -101,10 +101,10 @@ class BaseTrainer(object):
             self.transform_test = transforms.Compose([transforms.ToTensor(), \
                 transforms.Normalize((0.5071,  0.4866,  0.4409), (0.2009,  0.1984,  0.2023)),])
             # Initial the dataloader
-            self.trainset = torchvision.datasets.CIFAR100(root='./data', train=True, download=True, transform=self.transform_train)
-            self.testset = torchvision.datasets.CIFAR100(root='./data', train=False, download=True, transform=self.transform_test)
-            self.evalset = torchvision.datasets.CIFAR100(root='./data', train=False, download=False, transform=self.transform_test)
-            self.balancedset = torchvision.datasets.CIFAR100(root='./data', train=False, download=False, transform=self.transform_train)
+            self.trainset = torchvision.datasets.CIFAR100(root=os.environ["CIFARDATASET"], train=True, download=True, transform=self.transform_train)
+            self.testset = torchvision.datasets.CIFAR100(root=os.environ["CIFARDATASET"], train=False, download=True, transform=self.transform_test)
+            self.evalset = torchvision.datasets.CIFAR100(root=os.environ["CIFARDATASET"], train=False, download=False, transform=self.transform_test)
+            self.balancedset = torchvision.datasets.CIFAR100(root=os.environ["CIFARDATASET"], train=False, download=False, transform=self.transform_train)
             # Set the network architecture
             self.network = modified_resnet_cifar.resnet32
             self.network_mtl = modified_resnetmtl_cifar.resnetmtl32

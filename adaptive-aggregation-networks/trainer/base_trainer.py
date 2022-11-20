@@ -94,20 +94,36 @@ class BaseTrainer(object):
         if self.args.dataset == 'cifar100':
             # Set CIFAR-100
             # Set the pre-processing steps for training set
-            self.transform_train = transforms.Compose([transforms.RandomCrop(32, padding=4), \
-                transforms.RandomHorizontalFlip(), transforms.ToTensor(), \
-                transforms.Normalize((0.5071,  0.4866,  0.4409), (0.2009,  0.1984,  0.2023)),])
-            # Set the pre-processing steps for test set
-            self.transform_test = transforms.Compose([transforms.ToTensor(), \
-                transforms.Normalize((0.5071,  0.4866,  0.4409), (0.2009,  0.1984,  0.2023)),])
+            mean = [0.5019, 0.4835, 0.4374]
+            std = [0.2596, 0.2470, 0.2663]
+            # self.transform_train = transforms.Compose([transforms.RandomCrop(32, padding=4), \
+            #     transforms.RandomHorizontalFlip(), transforms.ToTensor(), \
+            #     transforms.Normalize((0.5071,  0.4866,  0.4409), (0.2009,  0.1984,  0.2023)),])
+            # # Set the pre-processing steps for test set
+            # self.transform_test = transforms.Compose([transforms.ToTensor(), \
+            #     transforms.Normalize((0.5071,  0.4866,  0.4409), (0.2009,  0.1984,  0.2023)),])
+            
+            self.transform_train = transforms.Compose([
+                transforms.Resize(224),
+                transforms.RandomHorizontalFlip(),
+                transforms.ToTensor(),
+                transforms.Normalize(mean, std)])
+            
+            self.transform_test = transforms.Compose([
+                transforms.Resize(224),
+                transforms.ToTensor(),
+                transforms.Normalize(mean, std)])
+            
             # Initial the dataloader
             self.trainset = torchvision.datasets.CIFAR100(root=os.environ["CIFARDATASET"], train=True, download=True, transform=self.transform_train)
             self.testset = torchvision.datasets.CIFAR100(root=os.environ["CIFARDATASET"], train=False, download=True, transform=self.transform_test)
             self.evalset = torchvision.datasets.CIFAR100(root=os.environ["CIFARDATASET"], train=False, download=False, transform=self.transform_test)
             self.balancedset = torchvision.datasets.CIFAR100(root=os.environ["CIFARDATASET"], train=False, download=False, transform=self.transform_train)
             # Set the network architecture
-            self.network = modified_resnet_cifar.resnet32
-            self.network_mtl = modified_resnetmtl_cifar.resnetmtl32
+            # self.network = modified_resnet_cifar.resnet32
+            # self.network_mtl = modified_resnetmtl_cifar.resnetmtl32
+            self.network = modified_resnet.resnet101
+            self.network_mtl = modified_resnetmtl.resnetmtl101
             # Set the learning rate decay parameters
             self.lr_strat = [int(self.args.epochs*0.5), int(self.args.epochs*0.75)]
             # Set the dictionary size

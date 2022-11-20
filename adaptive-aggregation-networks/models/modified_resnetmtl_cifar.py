@@ -14,6 +14,25 @@ import torch.utils.model_zoo as model_zoo
 import models.modified_linear as modified_linear
 from utils.incremental.conv2d_mtl import Conv2dMtl
 
+model_urls = {
+    'resnet18': 'https://download.pytorch.org/models/resnet18-5c106cde.pth',
+    'resnet34': 'https://download.pytorch.org/models/resnet34-333f7ec4.pth',
+    'resnet50': 'https://download.pytorch.org/models/resnet50-19c8e357.pth',
+    'resnet101': 'https://download.pytorch.org/models/resnet101-5d3b4d8f.pth',
+    'resnet152': 'https://download.pytorch.org/models/resnet152-b121ed2d.pth',
+}
+
+def load_pretrained_model(model, pretrained):
+    model_dict = model.state_dict()
+    pretrained_dict = model_zoo.load_url(model_urls[pretrained])
+    # 1. filter out unnecessary keys
+    pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict}
+    # 2. overwrite entries in the existing state dict
+    model_dict.update(pretrained_dict)
+    # 3. load the new state dict
+    model.load_state_dict(pretrained_dict)
+    return model
+
 def conv3x3mtl(in_planes, out_planes, stride=1):
     return Conv2dMtl(in_planes, out_planes, kernel_size=3, stride=stride,
                      padding=1, bias=False)
@@ -50,6 +69,58 @@ class BasicBlockMtl(nn.Module):
             out = self.relu(out)
 
         return out
+
+# def conv1x1(in_planes, out_planes, stride=1):
+#     """1x1 convolution"""
+#     return nn.Conv2d(in_planes, out_planes, kernel_size=1, stride=stride, bias=False)
+
+def conv1x1Mtl(in_planes, out_planes, stride=1):
+    return Conv2dMtl(in_planes, out_planes,
+                            kernel_size=1, stride=stride, bias=False)
+    
+class BottleneckMtl(nn.Module):
+    expansion = 4
+
+    def __init__(self, inplanes, planes, stride=1, downsample=None, groups=1,
+                 base_width=64, norm_layer=None, last = False):
+        super(BottleneckMtl, self).__init__()
+        if norm_layer is None:
+            norm_layer = nn.BatchNorm2d
+        width = int(planes * (base_width / 64.)) * groups
+        # Both self.conv2 and self.downsample layers downsample the input when stride != 1
+        self.conv1 = conv1x1Mtl(inplanes, width)
+        self.bn1 = norm_layer(width)
+        self.conv2 = conv3x3mtl(width, width, stride)
+        self.bn2 = norm_layer(width)
+        self.conv3 = conv1x1Mtl(width, planes * self.expansion)
+        self.bn3 = norm_layer(planes * self.expansion)
+        self.relu = nn.ReLU(inplace=True)
+        self.last = last
+        self.downsample = downsample
+        self.stride = stride
+
+    def forward(self, x):
+        identity = x
+
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu(out)
+
+        out = self.conv2(out)
+        out = self.bn2(out)
+        out = self.relu(out)
+
+        out = self.conv3(out)
+        out = self.bn3(out)
+
+        if self.downsample is not None:
+            identity = self.downsample(x)
+
+        out += identity
+        if not self.last:
+            out = self.relu(out)
+        return out
+
 
 class ResNetMtl(nn.Module):
 
@@ -118,4 +189,15 @@ def resnetmtl20(pretrained=False, **kwargs):
 def resnetmtl32(pretrained=False, **kwargs):
     n = 5
     model = ResNetMtl(BasicBlockMtl, [n, n, n], **kwargs)
+    return model
+
+def resnetmtl101(pretrained=True, **kwargs):
+    """Constructs a ResNet-101 model.
+    Args:
+        pretrained (bool): If True, returns a model pre-trained on ImageNet
+    """
+    model = ResNetMtl(BottleneckMtl, [3, 4, 23, 3], **kwargs)
+
+    if pretrained:
+        model = load_pretrained_model(model, pretrained="resnet101")
     return model

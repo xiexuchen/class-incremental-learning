@@ -18,6 +18,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
     ### Basic parameters
+    parser.add_argument('--use_resnet101', default=False, type=eval,, help='use resnet101 or not')
+
     parser.add_argument('--gpu', default='0', help='the index of GPU')
     parser.add_argument('--dataset', default='cifar100', type=str, choices=['cifar100', 'imagenet_sub', 'imagenet'])
     parser.add_argument('--data_dir', default='data/seed_1993_subset_100_imagenet/data', type=str)

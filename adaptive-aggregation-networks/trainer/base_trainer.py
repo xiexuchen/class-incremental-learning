@@ -504,6 +504,7 @@ class BaseTrainer(object):
             tg_feature_model = nn.Sequential(*list(b1_model.children())[:-1])
             # Get the shape of the feature inputted to the FC layers, i.e., the shape for the final feature maps
             num_features = b1_model.fc.in_features
+            print("num features is {}".format(num_features))
             # Intialize the new FC weights with zeros
             novel_embedding = torch.zeros((self.args.nb_cl, num_features))
             for cls_idx in range(iteration*self.args.nb_cl, (iteration+1)*self.args.nb_cl):

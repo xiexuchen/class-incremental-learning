@@ -13,7 +13,7 @@ import torch.nn as nn
 from utils.misc import *
 
 def process_inputs_fp(the_args, fusion_vars, b1_model, b2_model, inputs, feature_mode=False):
-
+#aggregate feature map in different level, 
     # The 1st level
     if the_args.dataset == 'cifar100':
         b1_model_group1 = [b1_model.conv1, b1_model.bn1, b1_model.relu, b1_model.layer1]

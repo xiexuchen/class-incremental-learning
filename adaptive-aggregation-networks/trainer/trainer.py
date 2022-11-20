@@ -95,7 +95,8 @@ class Trainer(BaseTrainer):
         ref_b2_model = None
         the_lambda_mult = None
 
-        for iteration in range(start_iter, int(self.args.num_classes/self.args.nb_cl)):
+        for iteration in range(start_iter, int(self.args.num_classes/self.args.nb_cl)): #e.g: 50 10, start: 4 end: 10
+            #iteration means task
             ### Initialize models for the current phase
             b1_model, b2_model, ref_model, ref_b2_model, lambda_mult, cur_lambda, last_iter = self.init_current_phase_model(iteration, start_iter, b1_model, b2_model)
 

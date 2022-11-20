@@ -17,7 +17,7 @@ from utils.incremental.conv2d_mtl import Conv2dMtl
 def conv3x3mtl(in_planes, out_planes, stride=1):
     """3x3 convolution with padding"""
     return Conv2dMtl(in_planes, out_planes, kernel_size=3, stride=stride,
-                     padding=1, bias=False)
+                     padding=1, bias=False) #here achieves the conv with weight multiplied on it 
 
 
 class BasicBlockMtl(nn.Module):

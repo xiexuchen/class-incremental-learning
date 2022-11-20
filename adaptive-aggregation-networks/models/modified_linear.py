@@ -36,7 +36,7 @@ class CosineLinear(Module):
         out = F.linear(F.normalize(input, p=2,dim=1), \
                 F.normalize(self.weight, p=2, dim=1))
         if self.sigma is not None:
-            out = self.sigma * out
+            out = self.sigma * out #sigma is got from trained 
         return out
 
 class SplitCosineLinear(Module):

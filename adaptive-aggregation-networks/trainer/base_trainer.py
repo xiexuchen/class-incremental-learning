@@ -89,7 +89,7 @@ class BaseTrainer(object):
         """The function to set CUDA device."""
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")       
 
-    def set_dataset_variables(self):
+    def set_dataset_variables(self): #the dataset path, the data transform is done here
         """The function to set the dataset parameters."""
         if self.args.dataset == 'cifar100':
             # Set CIFAR-100
@@ -101,10 +101,11 @@ class BaseTrainer(object):
             self.transform_test = transforms.Compose([transforms.ToTensor(), \
                 transforms.Normalize((0.5071,  0.4866,  0.4409), (0.2009,  0.1984,  0.2023)),])
             # Initial the dataloader
-            self.trainset = torchvision.datasets.CIFAR100(root='./data', train=True, download=True, transform=self.transform_train)
-            self.testset = torchvision.datasets.CIFAR100(root='./data', train=False, download=True, transform=self.transform_test)
-            self.evalset = torchvision.datasets.CIFAR100(root='./data', train=False, download=False, transform=self.transform_test)
-            self.balancedset = torchvision.datasets.CIFAR100(root='./data', train=False, download=False, transform=self.transform_train)
+            self.trainset = torchvision.datasets.CIFAR100(root=os.environ["CIFARDATASET"], train=True, download=True, transform=self.transform_train)
+            self.testset = torchvision.datasets.CIFAR100(root=os.environ["CIFARDATASET"], train=False, download=True, transform=self.transform_test)
+            self.evalset = torchvision.datasets.CIFAR100(root=os.environ["CIFARDATASET"], train=False, download=False, transform=self.transform_test)
+            self.balancedset = torchvision.datasets.CIFAR100(root=os.environ["CIFARDATASET"], train=False, download=False, transform=self.transform_train)
+            #balanced dataset? I think the model extract it and save it in the path
             # Set the network architecture
             self.network = modified_resnet_cifar.resnet32
             self.network_mtl = modified_resnetmtl_cifar.resnetmtl32
@@ -181,7 +182,7 @@ class BaseTrainer(object):
 
         return X_train_total, Y_train_total, X_valid_total, Y_valid_total    
 
-    def init_fusion_vars(self):
+    def init_fusion_vars(self): #the aggregation weights
         """The function to initialize the aggregation weights."""
         self.fusion_vars = nn.ParameterList()
         if self.args.dataset == 'cifar100':
@@ -303,7 +304,7 @@ class BaseTrainer(object):
             print("Feature:", in_features, "Class:", out_features)
             # The 2nd branch and the reference model are not used, set them to None
             ref_model = None
-            b2_model = None
+            b2_model = None #in the first phase, there is no b2_model
             ref_b2_model = None
             the_lambda_mult = None
         elif iteration == start_iter+1:
@@ -315,13 +316,13 @@ class BaseTrainer(object):
             # Copy and freeze the aggregation weights
             self.ref_fusion_vars = copy.deepcopy(self.fusion_vars)
             # Set the 1st branch for the 1st phase
-            if self.args.branch_1 == 'ss':
+            if self.args.branch_1 == 'ss': #ss means scaling, so train conv weight
                 b1_model = self.network_mtl(num_classes=self.args.nb_cl_fg)
             else:
                 b1_model = self.network(num_classes=self.args.nb_cl_fg)
             # Load the model parameters trained last phase to the current phase model
             ref_dict = ref_model.state_dict()
-            tg_dict = b1_model.state_dict()
+            tg_dict = b1_model.state_dict() #use the model from task 0 to update the b1 model
             tg_dict.update(ref_dict)
             b1_model.load_state_dict(tg_dict)
             b1_model.to(self.device)
@@ -329,7 +330,7 @@ class BaseTrainer(object):
             if self.args.branch_2 == 'ss':
                 b2_model = self.network_mtl(num_classes=self.args.nb_cl_fg)
             else:
-                b2_model = self.network(num_classes=self.args.nb_cl_fg)
+                b2_model = self.network(num_classes=self.args.nb_cl_fg) #b2 model should be updated freely
             # Load the model parameters trained last phase to the current phase model
             b2_dict = b2_model.state_dict()
             b2_dict.update(ref_dict)
@@ -352,13 +353,13 @@ class BaseTrainer(object):
         else:
             # The i-th phase, i>=2
             # Update the index for last phase
-            last_iter = iteration
+            last_iter = iteration #after task 1, no more b1 b2 model?
             # Copy and freeze the 1st branch model
             ref_model = copy.deepcopy(b1_model)
             # Copy and freeze the aggregation weights
             self.ref_fusion_vars = copy.deepcopy(self.fusion_vars)
             # Copy and freeze the 2nd branch model
-            ref_b2_model = copy.deepcopy(b2_model)
+            ref_b2_model = copy.deepcopy(b2_model) #if dont want to update b2 model, just copy.deepcopy it
             # Get the information about the input and output features from the network
             in_features = b1_model.fc.in_features
             out_features1 = b1_model.fc.fc1.out_features

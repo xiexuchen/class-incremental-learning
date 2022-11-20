@@ -52,7 +52,7 @@ def incremental_train_and_eval(the_args, epochs, fusion_vars, ref_fusion_vars, b
     tg_optimizer, tg_lr_scheduler, fusion_optimizer, fusion_lr_scheduler, trainloader, testloader, iteration, \
     start_iteration, X_protoset_cumuls, Y_protoset_cumuls, order_list, the_lambda, dist, \
     K, lw_mr, balancedloader, fix_bn=False, weight_per_class=None, device=None):
-
+#pass in the original b1 model and b2 model, return the updated b1 and b2
     # Setting up the CUDA device
     if device is None:
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -67,7 +67,7 @@ def incremental_train_and_eval(the_args, epochs, fusion_vars, ref_fusion_vars, b
     handle_cur_features = b1_model.fc.register_forward_hook(get_cur_features)
     handle_old_scores_bs = b1_model.fc.fc1.register_forward_hook(get_old_scores_before_scale)
     handle_new_scores_bs = b1_model.fc.fc2.register_forward_hook(get_new_scores_before_scale)
-
+#register hook, so that the temporary result can be catched
     # If the 2nd branch reference is not None, set it to the evaluation mode
     if iteration > start_iteration+1:
         ref_b2_model.eval()
@@ -115,10 +115,10 @@ def incremental_train_and_eval(the_args, epochs, fusion_vars, ref_fusion_vars, b
             if iteration == start_iteration+1:
                 ref_outputs = ref_model(inputs)
                 loss1 = nn.CosineEmbeddingLoss()(cur_features, ref_features.detach(), torch.ones(inputs.shape[0]).to(device)) * the_lambda
-            else:
-                ref_outputs, ref_features_new = process_inputs_fp(the_args, ref_fusion_vars, ref_model, ref_b2_model, inputs)
+            else: #ref model means the default model, avoiding the forget
+                ref_outputs, ref_features_new = process_inputs_fp(the_args, ref_fusion_vars, ref_model, ref_b2_model, inputs) 
                 loss1 = nn.CosineEmbeddingLoss()(cur_features, ref_features_new.detach(), torch.ones(inputs.shape[0]).to(device)) * the_lambda
-
+#lambda is the same meaning in ucir paper
             # Loss 2: classification loss
             loss2 = nn.CrossEntropyLoss(weight_per_class)(outputs, targets)
 

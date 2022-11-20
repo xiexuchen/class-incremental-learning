@@ -281,7 +281,7 @@ class BaseTrainer(object):
             prototypes = np.zeros((self.args.num_classes, dictionary_size, X_train_total.shape[1], X_train_total.shape[2], X_train_total.shape[3]))
             for orde in range(self.args.num_classes):
                 prototypes[orde,:,:,:,:] = X_train_total[np.where(Y_train_total==order[orde])]
-        elif self.args.dataset == 'imagenet_sub' or self.args.dataset == 'imagenet' or self.args.use_resnet101:
+        elif self.args.dataset == 'imagenet_sub' or self.args.dataset == 'imagenet':
             # ImageNet, save the paths for the training samples if an array
             prototypes = [[] for i in range(self.args.num_classes)]
             for orde in range(self.args.num_classes):
@@ -529,7 +529,7 @@ class BaseTrainer(object):
             # Transfer all weights of the model to GPU
             b1_model.to(self.device)
             b1_model.fc.fc2.weight.data = novel_embedding.to(self.device)
-        elif self.args.dataset == 'imagenet_sub' or self.args.dataset == 'imagenet'or self.args.use_resnet101:
+        elif self.args.dataset == 'imagenet_sub' or self.args.dataset == 'imagenet':
             # Load previous FC weights, transfer them from GPU to CPU
             old_embedding_norm = b1_model.fc.fc1.weight.data.norm(dim=1, keepdim=True)
             average_old_embedding_norm = torch.mean(old_embedding_norm, dim=0).to('cpu').type(torch.DoubleTensor)
@@ -591,7 +591,7 @@ class BaseTrainer(object):
             self.testset.targets = map_Y_valid_cumul
             testloader = torch.utils.data.DataLoader(self.testset, batch_size=self.args.test_batch_size,
                 shuffle=False, num_workers=self.args.num_workers)
-        elif self.args.dataset == 'imagenet_sub' or self.args.dataset == 'imagenet' or self.args.use_resnet101:
+        elif self.args.dataset == 'imagenet_sub' or self.args.dataset == 'imagenet':
             # Set the training dataloader
             current_train_imgs = merge_images_labels(X_train, map_Y_train)
             self.trainset.imgs = self.trainset.samples = current_train_imgs

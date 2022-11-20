@@ -105,7 +105,6 @@ class BaseTrainer(object):
             self.testset = torchvision.datasets.CIFAR100(root=os.environ["CIFARDATASET"], train=False, download=True, transform=self.transform_test)
             self.evalset = torchvision.datasets.CIFAR100(root=os.environ["CIFARDATASET"], train=False, download=False, transform=self.transform_test)
             self.balancedset = torchvision.datasets.CIFAR100(root=os.environ["CIFARDATASET"], train=False, download=False, transform=self.transform_train)
-            #balanced dataset? I think the model extract it and save it in the path
             # Set the network architecture
             self.network = modified_resnet_cifar.resnet32
             self.network_mtl = modified_resnetmtl_cifar.resnetmtl32

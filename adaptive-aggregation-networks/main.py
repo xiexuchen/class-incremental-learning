@@ -28,7 +28,7 @@ if __name__ == '__main__':
     parser.add_argument('--resume', action='store_true', help='resume from the checkpoints')
     parser.add_argument('--num_workers', default=1, type=int, help='the number of workers for loading data')
     parser.add_argument('--random_seed', default=1993, type=int, help='random seed')
-    parser.add_argument('--train_batch_size', default=128, type=int, help='the batch size for train loader')
+    parser.add_argument('--train_batch_size', default=32, type=int, help='the batch size for train loader')
     parser.add_argument('--test_batch_size', default=100, type=int, help='the batch size for test loader')
     parser.add_argument('--eval_batch_size', default=128, type=int, help='the batch size for validation loader')
     parser.add_argument('--disable_gpu_occupancy', action='store_false', help='disable GPU occupancy')

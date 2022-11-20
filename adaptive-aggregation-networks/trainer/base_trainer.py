@@ -580,7 +580,7 @@ class BaseTrainer(object):
           testloader: the test dataloader
         """
         print('Setting the dataloaders ...')
-        if self.args.dataset == 'cifar100'):
+        if self.args.dataset == 'cifar100':
             # Set the training dataloader
             self.trainset.data = X_train.astype('uint8')
             self.trainset.targets = map_Y_train

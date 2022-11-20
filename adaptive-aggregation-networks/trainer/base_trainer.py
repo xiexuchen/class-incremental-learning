@@ -200,7 +200,7 @@ class BaseTrainer(object):
     def init_fusion_vars(self): #the aggregation weights
         """The function to initialize the aggregation weights."""
         self.fusion_vars = nn.ParameterList()
-        if self.args.dataset == 'cifar100':
+        if self.args.dataset == 'cifar100' and (not self.args.use_resnet101):
             # CIFAR-100, the number of blocks: 3
             if self.args.branch_mode == 'dual':
                 # Dual branch mode, intialize the aggregation weights to 0.5
@@ -215,7 +215,7 @@ class BaseTrainer(object):
             # Send the aggregation weights to GPU 
             self.fusion_vars.to(self.device)
 
-        elif self.args.dataset == 'imagenet_sub' or self.args.dataset == 'imagenet':
+        elif self.args.dataset == 'imagenet_sub' or self.args.dataset == 'imagenet' or self.args.use_resnet101:
             # ImageNet, the number of blocks: 4
             if self.args.branch_mode == 'dual':
                 # Dual branch mode, intialize the aggregation weights to 0.5
@@ -281,7 +281,7 @@ class BaseTrainer(object):
             prototypes = np.zeros((self.args.num_classes, dictionary_size, X_train_total.shape[1], X_train_total.shape[2], X_train_total.shape[3]))
             for orde in range(self.args.num_classes):
                 prototypes[orde,:,:,:,:] = X_train_total[np.where(Y_train_total==order[orde])]
-        elif self.args.dataset == 'imagenet_sub' or self.args.dataset == 'imagenet':
+        elif self.args.dataset == 'imagenet_sub' or self.args.dataset == 'imagenet' or self.args.use_resnet101:
             # ImageNet, save the paths for the training samples if an array
             prototypes = [[] for i in range(self.args.num_classes)]
             for orde in range(self.args.num_classes):
@@ -529,7 +529,7 @@ class BaseTrainer(object):
             # Transfer all weights of the model to GPU
             b1_model.to(self.device)
             b1_model.fc.fc2.weight.data = novel_embedding.to(self.device)
-        elif self.args.dataset == 'imagenet_sub' or self.args.dataset == 'imagenet':
+        elif self.args.dataset == 'imagenet_sub' or self.args.dataset == 'imagenet'or self.args.use_resnet101:
             # Load previous FC weights, transfer them from GPU to CPU
             old_embedding_norm = b1_model.fc.fc1.weight.data.norm(dim=1, keepdim=True)
             average_old_embedding_norm = torch.mean(old_embedding_norm, dim=0).to('cpu').type(torch.DoubleTensor)
@@ -580,7 +580,7 @@ class BaseTrainer(object):
           testloader: the test dataloader
         """
         print('Setting the dataloaders ...')
-        if self.args.dataset == 'cifar100':
+        if self.args.dataset == 'cifar100'):
             # Set the training dataloader
             self.trainset.data = X_train.astype('uint8')
             self.trainset.targets = map_Y_train
@@ -591,7 +591,7 @@ class BaseTrainer(object):
             self.testset.targets = map_Y_valid_cumul
             testloader = torch.utils.data.DataLoader(self.testset, batch_size=self.args.test_batch_size,
                 shuffle=False, num_workers=self.args.num_workers)
-        elif self.args.dataset == 'imagenet_sub' or self.args.dataset == 'imagenet':
+        elif self.args.dataset == 'imagenet_sub' or self.args.dataset == 'imagenet' or self.args.use_resnet101:
             # Set the training dataloader
             current_train_imgs = merge_images_labels(X_train, map_Y_train)
             self.trainset.imgs = self.trainset.samples = current_train_imgs

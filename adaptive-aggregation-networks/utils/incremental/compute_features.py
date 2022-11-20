@@ -45,7 +45,7 @@ def compute_features(the_args, fusion_vars, tg_model, free_model, tg_feature_mod
             if is_start_iteration:
                 the_feature = tg_feature_model(inputs)
             else:
-                print("going not start way way")
+                # print("going not start way way")
                 the_feature = process_inputs_fp(the_args, fusion_vars, tg_model, free_model, inputs, feature_mode=True)
             features[start_idx:start_idx+inputs.shape[0], :] = np.squeeze(the_feature.cpu())
             start_idx = start_idx+inputs.shape[0]

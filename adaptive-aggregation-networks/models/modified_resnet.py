@@ -200,7 +200,7 @@ def resnet50(pretrained=True, **kwargs):
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
     """
-    model = ResNetMtl(BottleneckMtl, [3, 4, 6, 3], **kwargs)
+    model = ResNet(Bottleneck, [3, 4, 6, 3], **kwargs)
 
     if pretrained:
         model = load_pretrained_model(model, pretrained="resnet50")

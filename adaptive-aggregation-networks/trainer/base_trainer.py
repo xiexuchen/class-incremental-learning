@@ -122,10 +122,10 @@ class BaseTrainer(object):
             # Set the network architecture
             # self.network = modified_resnet_cifar.resnet32
             # self.network_mtl = modified_resnetmtl_cifar.resnetmtl32
-            self.network = modified_resnet.resnet101
-            self.network_mtl = modified_resnetmtl.resnetmtl101
-            # self.network = modified_resnet.resnet50
-            # self.network_mtl = modified_resnetmtl.resnetmtl50
+            # self.network = modified_resnet.resnet101
+            # self.network_mtl = modified_resnetmtl.resnetmtl101
+            self.network = modified_resnet.resnet50
+            self.network_mtl = modified_resnetmtl.resnetmtl50
             # self.network = modified_resnet.resnet18
             # self.network_mtl = modified_resnetmtl.resnetmtl18
             # Set the learning rate decay parameters

@@ -124,10 +124,10 @@ class BaseTrainer(object):
             # self.network_mtl = modified_resnetmtl_cifar.resnetmtl32
             # self.network = modified_resnet.resnet101
             # self.network_mtl = modified_resnetmtl.resnetmtl101
-            self.network = modified_resnet.resnet50
-            self.network_mtl = modified_resnetmtl.resnetmtl50
-            # self.network = modified_resnet.resnet18
-            # self.network_mtl = modified_resnetmtl.resnetmtl18
+            # self.network = modified_resnet.resnet50
+            # self.network_mtl = modified_resnetmtl.resnetmtl50
+            self.network = modified_resnet.resnet18
+            self.network_mtl = modified_resnetmtl.resnetmtl18
             # Set the learning rate decay parameters
             self.lr_strat = [int(self.args.epochs*0.5), int(self.args.epochs*0.75)]
             # Set the dictionary size

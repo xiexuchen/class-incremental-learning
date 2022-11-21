@@ -928,7 +928,11 @@ class BaseTrainer(object):
         X_protoset_cumuls = []
         Y_protoset_cumuls = []
         if self.args.dataset == 'cifar100':
-            class_means = np.zeros((num_features,100,2))
+            if self.args.use_resnet101 == True:
+                class_means = np.zeros((num_features,100,2))
+            else:
+                class_means = np.zeros((64,100,2))
+
             for iteration2 in range(iteration+1):
                 for iter_dico in range(self.args.nb_cl):
                     # Compute the D and D2 matrizes, which are used to compute the class mean values

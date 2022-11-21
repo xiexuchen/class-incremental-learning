@@ -187,10 +187,23 @@ class ResNet(nn.Module):
 
 def resnet18(pretrained=False, **kwargs):
     model = ResNet(BasicBlock, [2, 2, 2, 2], **kwargs)
+    if pretrained:
+        model = load_pretrained_model(model, pretrained="resnet18")
     return model
 
 def resnet34(pretrained=False, **kwargs):
     model = ResNet(BasicBlock, [3, 4, 6, 3], **kwargs)
+    return model
+
+def resnet50(pretrained=True, **kwargs):
+    """Constructs a ResNet-101 model.
+    Args:
+        pretrained (bool): If True, returns a model pre-trained on ImageNet
+    """
+    model = ResNetMtl(BottleneckMtl, [3, 4, 6, 3], **kwargs)
+
+    if pretrained:
+        model = load_pretrained_model(model, pretrained="resnet50")
     return model
 
 def resnet101(pretrained=True, **kwargs):

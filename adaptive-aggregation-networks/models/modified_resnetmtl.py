@@ -185,7 +185,7 @@ class ResNetMtl(nn.Module):
 
         return x
 
-def resnetmtl18(pretrained=False, **kwargs):
+def resnetmtl18(pretrained=True, **kwargs):
     model = ResNetMtl(BasicBlockMtl, [2, 2, 2, 2], **kwargs)
     if pretrained:
         model = load_pretrained_model(model, pretrained="resnet18")

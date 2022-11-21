@@ -6,6 +6,6 @@ for seed in 32 40 50; do
         ${PYTHON} ../main.py --nb_cl_fg=${init_cls} --nb_cl=${init_cls} \
         --gpu=0 --random_seed=${seed} --baseline="lucir" \
         --branch_mode="dual" --branch_1="ss" --branch_2="free" \
-        --dataset="cifar100" --epochs=10 --gpu=2 --use_resnet101=False
+        --dataset="cifar100" --epochs=10 --gpu=0 --use_resnet101=False
     done
 done

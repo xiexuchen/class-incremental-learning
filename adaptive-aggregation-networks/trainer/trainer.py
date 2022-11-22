@@ -63,7 +63,7 @@ class Trainer(BaseTrainer):
         top1_acc_list_ori = np.zeros((int(self.args.num_classes/self.args.nb_cl), 3, 1))
 
         # Load the training and test samples from the dataset
-        X_train_total, Y_train_total, X_valid_total, Y_valid_total = self.set_dataset()
+        X_train_total, Y_train_total, X_valid_total, Y_valid_total = self.set_dataset() #1 place to change
 
         # Initialize the aggregation weights
         self.init_fusion_vars()       

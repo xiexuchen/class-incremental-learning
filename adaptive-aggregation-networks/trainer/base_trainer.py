@@ -203,8 +203,9 @@ class BaseTrainer(object):
 
     def init_fusion_vars(self): #the aggregation weights
         """The function to initialize the aggregation weights."""
+        #it depends on how many layers that backbone has
         self.fusion_vars = nn.ParameterList()
-        if self.args.dataset == 'cifar100' and (not self.args.use_resnet101):
+        if self.args.dataset == 'cifar100' and self.args.image_size != 224: #8 place to change if dataset change
             # CIFAR-100, the number of blocks: 3
             if self.args.branch_mode == 'dual':
                 # Dual branch mode, intialize the aggregation weights to 0.5
@@ -219,7 +220,7 @@ class BaseTrainer(object):
             # Send the aggregation weights to GPU 
             self.fusion_vars.to(self.device)
 
-        elif self.args.dataset == 'imagenet_sub' or self.args.dataset == 'imagenet' or self.args.use_resnet101:
+        elif self.args.dataset == 'imagenet_sub' or self.args.dataset == 'imagenet' or self.args.image_size == 224:
             # ImageNet, the number of blocks: 4
             if self.args.branch_mode == 'dual':
                 # Dual branch mode, intialize the aggregation weights to 0.5
@@ -280,7 +281,7 @@ class BaseTrainer(object):
         """
         # Set an empty to store the indexes for the selected exemplars
         alpha_dr_herding  = np.zeros((int(self.args.num_classes/self.args.nb_cl), dictionary_size, self.args.nb_cl), np.float32)
-        if self.args.dataset == 'cifar100':
+        if self.args.dataset == 'cifar100': #2 place to change if change dataset
             # CIFAR-100, directly load the tensors for the training samples
             prototypes = np.zeros((self.args.num_classes, dictionary_size, X_train_total.shape[1], X_train_total.shape[2], X_train_total.shape[3]))
             for orde in range(self.args.num_classes):
@@ -533,7 +534,7 @@ class BaseTrainer(object):
             # Transfer all weights of the model to GPU
             b1_model.to(self.device)
             b1_model.fc.fc2.weight.data = novel_embedding.to(self.device)
-        elif self.args.dataset == 'imagenet_sub' or self.args.dataset == 'imagenet':
+        elif self.args.dataset == 'imagenet_sub' or self.args.dataset == 'imagenet' or self.args.image_size == 224:
             # Load previous FC weights, transfer them from GPU to CPU
             old_embedding_norm = b1_model.fc.fc1.weight.data.norm(dim=1, keepdim=True)
             average_old_embedding_norm = torch.mean(old_embedding_norm, dim=0).to('cpu').type(torch.DoubleTensor)
@@ -584,7 +585,7 @@ class BaseTrainer(object):
           testloader: the test dataloader
         """
         print('Setting the dataloaders ...')
-        if self.args.dataset == 'cifar100':
+        if self.args.dataset == 'cifar100': #3 place that change dataset should change
             # Set the training dataloader
             self.trainset.data = X_train.astype('uint8')
             self.trainset.targets = map_Y_train
@@ -694,7 +695,7 @@ class BaseTrainer(object):
                 raise ValueError('Please set the correct mode.')
 
         # Set the learning rate decay scheduler
-        if self.args.dataset == 'cifar100':
+        if self.args.dataset == 'cifar100': #4th place that change dataset should change
             tg_lr_scheduler = lr_scheduler.MultiStepLR(tg_optimizer, milestones=self.lr_strat, gamma=self.args.lr_factor)
             fusion_lr_scheduler = lr_scheduler.MultiStepLR(fusion_optimizer, milestones=self.lr_strat, gamma=self.args.lr_factor)
         elif self.args.dataset == 'imagenet_sub' or self.args.dataset == 'imagenet':
@@ -787,7 +788,7 @@ class BaseTrainer(object):
         map_Y_valid_ori = np.array([order_list.index(i) for i in Y_valid_ori])
         print('Computing accuracy on the 0-th phase classes...')
         # Set a temporary dataloader for the 0-th phase data
-        if self.args.dataset == 'cifar100':
+        if self.args.dataset == 'cifar100':#6 place that should change if dataset change
             self.evalset.data = X_valid_ori.astype('uint8')
             self.evalset.targets = map_Y_valid_ori
             pin_memory = False
@@ -812,7 +813,7 @@ class BaseTrainer(object):
         map_Y_valid_cumul = np.array([order_list.index(i) for i in Y_valid_cumul])
         # Set a temporary dataloader for the current-phase data
         print('Computing cumulative accuracy...')
-        if self.args.dataset == 'cifar100':
+        if self.args.dataset == 'cifar100':#6 place that should change if dataset change
             self.evalset.data = X_valid_cumul.astype('uint8')
             self.evalset.targets = map_Y_valid_cumul
         elif self.args.dataset == 'imagenet_sub' or self.args.dataset == 'imagenet':  
@@ -863,7 +864,7 @@ class BaseTrainer(object):
         tg_feature_model = nn.Sequential(*list(b1_model.children())[:-1])
         # Get the shape for the feature maps
         num_features = b1_model.fc.in_features
-        if self.args.dataset == 'cifar100':
+        if self.args.dataset == 'cifar100':#5 place that should change if change the dataset
             for iter_dico in range(last_iter*self.args.nb_cl, (iteration+1)*self.args.nb_cl):
                 # Set a temporary dataloader for the current class
                 self.evalset.data = prototypes[iter_dico].astype('uint8')
@@ -928,7 +929,7 @@ class BaseTrainer(object):
         X_protoset_cumuls = []
         Y_protoset_cumuls = []
         if self.args.dataset == 'cifar100':
-            if self.args.use_resnet101 == True:
+            if self.args.image_size == 224:
                 class_means = np.zeros((num_features,100,2))
             else:
                 class_means = np.zeros((64,100,2))

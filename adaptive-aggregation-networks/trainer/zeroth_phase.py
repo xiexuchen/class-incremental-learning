@@ -64,7 +64,7 @@ def incremental_train_and_eval_zeroth_phase(the_args, epochs, b1_model, ref_mode
             loss = nn.CrossEntropyLoss(weight_per_class)(outputs, targets)
             # Backward and update the parameters
             loss.backward()
-            tg_optimizer.step()
+            tg_optimizer.step() #tg optimizer is used for b1 model
             # Record the losses and the number of samples to compute the accuracy
             train_loss += loss.item()
             _, predicted = outputs.max(1)

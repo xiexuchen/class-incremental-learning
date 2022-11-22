@@ -18,7 +18,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
     ### Basic parameters
-    parser.add_argument('--use_resnet101', default=False, type=eval, help='use resnet101 or not')
+    parser.add_argument('--image_size', type=int, help='image size, when resize cifar100 to 224, should change this to 224')
 
     parser.add_argument('--gpu', default='0', help='the index of GPU')
     parser.add_argument('--dataset', default='cifar100', type=str, choices=['cifar100', 'imagenet_sub', 'imagenet'])

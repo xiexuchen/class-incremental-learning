@@ -165,29 +165,28 @@ class BaseTrainer(object):
             self.lr_strat = [int(self.args.epochs*0.333), int(self.args.epochs*0.667)]
             # Set the dictionary size
             self.dictionary_size = 1500
+            
         elif self.args.dataset == "skin7":
             self.network = modified_resnet.resnet34
             self.network_mtl = modified_resnetmtl.resnetmtl34
             train_tf = transforms.Compose([
-                transforms.Resize(self.img_size),
+                transforms.Resize(self.args.image_size),
                 transforms.RandomHorizontalFlip(),
                 transforms.ToTensor(),
-                transforms.Normalize(self.mean, self.std)])
+                transforms.Normalize( [0.7615711, 0.56942874, 0.5994554],  [0.12556943, 0.13925466, 0.15403599])])
             self.trainset = skin7_dataset.Skin7( #type: dataset
                 root=os.environ["SKIN7DATASET"], train=True, transform=train_tf)
-            
             test_tf = transforms.Compose([
-                transforms.Resize((self.img_size, self.img_size)),
+                transforms.Resize((self.args.image_size, self.args.image_size)),
                 transforms.ToTensor(),
-                transforms.Normalize(self.mean, self.std)])
+                transforms.Normalize([0.7720412, 0.54642653, 0.56280327], [0.13829944, 0.1553769, 0.17688483])])
             self.testset = skin7_augmentation_dataset.Skin7_Augmentation(
             root=os.environ["SKIN7DATASET"], train=False, transform=test_tf)
             self.evalset = skin7_augmentation_dataset.Skin7_Augmentation(
             root=os.environ["SKIN7DATASET"], train=False, transform=test_tf) #so far keep the validation set same as testset
-            self.evalset = skin7_dataset.Skin7( #type: dataset
+            self.balancedset = skin7_dataset.Skin7( #type: dataset
                 root=os.environ["SKIN7DATASET"], train=True, transform=train_tf) #same as train so far
             self.dictionary_size = 1500 #maximum sample number for one class
-            
             raise ValueError('Please set the correct dataset.')
 
     def map_labels(self, order_list, Y_set):

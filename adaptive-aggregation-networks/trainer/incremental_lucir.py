@@ -186,8 +186,13 @@ def incremental_train_and_eval(the_args, epochs, fusion_vars, ref_fusion_vars, b
                 _, predicted = outputs.max(1)
                 total += targets.size(0)
                 correct += predicted.eq(targets).sum().item()
-        print('Test set: {} test loss: {:.4f} accuracy: {:.4f}'.format(len(testloader), test_loss/(batch_idx+1), 100.*correct/total))
-
+                if the_args.dataset == "skin7": #key
+                    mcr = calculate_mean_class_recall(targets ,predicted)
+        if the_args.dataset == "skin7": #key
+            print('Test set: {} test loss: {:.4f} accuracy: {:.4f}, mcr:{:.4f}'.format(len(testloader), test_loss/(batch_idx+1), 100.*correct/total, mcr))
+        else:
+            print('Test set: {} test loss: {:.4f} accuracy: {:.4f}'.format(len(testloader), test_loss/(batch_idx+1), 100.*correct/total))
+            
     print("Removing register forward hook")
     handle_ref_features.remove()
     handle_cur_features.remove()

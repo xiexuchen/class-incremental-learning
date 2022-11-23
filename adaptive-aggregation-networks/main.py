@@ -21,7 +21,7 @@ if __name__ == '__main__':
     parser.add_argument('--image_size', type=int, help='image size, when resize cifar100 to 224, should change this to 224')
 
     parser.add_argument('--gpu', default='0', help='the index of GPU')
-    parser.add_argument('--dataset', default='cifar100', type=str, choices=['cifar100', 'imagenet_sub', 'imagenet'])
+    parser.add_argument('--dataset', default='cifar100', type=str, choices=['cifar100', 'imagenet_sub', 'imagenet',"skin7"])
     parser.add_argument('--data_dir', default='data/seed_1993_subset_100_imagenet/data', type=str)
     parser.add_argument('--baseline', default='lucir', type=str, choices=['lucir', 'icarl'], help='baseline method')
     parser.add_argument('--ckpt_label', type=str, default='exp01', help='the label for the checkpoints')

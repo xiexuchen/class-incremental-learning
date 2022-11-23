@@ -12,11 +12,15 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": true,
-            "args": ["--nb_cl_fg","5","--nb_cl","5","--gpu","1","--random_seed","5",
-                    "--baseline","lucir","--branch_mode","dual","--branch_1","ss",
-                    "--branch_2","free","--dataset","cifar100","--epochs","10",
-                    "--disable_gpu_occupancy",
-                    "--image_size", "224"]
+            // "args": ["--nb_cl_fg","5","--nb_cl","5","--gpu","1","--random_seed","5",
+            //         "--baseline","lucir","--branch_mode","dual","--branch_1","ss",
+            //         "--branch_2","free","--dataset","cifar100","--epochs","10",
+            //         "--disable_gpu_occupancy",
+            //         "--image_size", "224"]
+            "args": ["--nb_cl_fg","2","--nb_cl","1","--gpu","2","--random_seed","32",
+                "--baseline","lucir","--branch_mode","dual","--branch_1","ss",
+                "--branch_2","free","--dataset","skin7","--epochs","10",
+                "--disable_gpu_occupancy", "--image_size", "224","--K","1"]
         }
     ]
 }

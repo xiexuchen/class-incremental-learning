@@ -14,6 +14,8 @@ import sys
 import time
 import math
 import subprocess
+from sklearn.metrics import confusion_matrix
+
 try:
     import cPickle as pickle
 except:
@@ -107,6 +109,14 @@ def format_time(seconds):
     if f == '':
         f = '0ms'
     return f
+
+def calculate_mean_class_recall(y_true, y_pred):
+    """ Calculate the mean class recall for the dataset X """
+    cm = confusion_matrix(y_true, y_pred)
+    right_of_class = np.diag(cm)
+    num_of_class = cm.sum(axis=1)
+    mcr = (right_of_class / num_of_class).mean()
+    return mcr
 
 def tensor2im(input_image, imtype=np.uint8):
     mean = [0.5071,  0.4866,  0.4409]

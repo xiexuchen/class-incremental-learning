@@ -51,11 +51,11 @@ class Skin7(Dataset):
     def get_data(self, iterNo, data_dir):
         
         if self.train:
-            csv = 'split_data/split_data_{}_fold_train.csv'.format(iterNo)
+            # csv = 'split_data/split_data_{}_fold_train.csv'.format(iterNo)
             csv = 'split_data/balance_train.csv'
         else:
-            csv = 'split_data/split_data_{}_fold_test.csv'.format(iterNo)
-            csv = 'split_data/balance_test.csv'
+            # csv = 'split_data/split_data_{}_fold_test.csv'.format(iterNo)
+            csv = 'split_data/balance_test.csv' #cannot find this csv
 
         fn = os.path.join(data_dir, csv)
         print(fn)

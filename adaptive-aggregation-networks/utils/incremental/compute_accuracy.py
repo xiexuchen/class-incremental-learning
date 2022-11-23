@@ -55,6 +55,8 @@ def compute_accuracy(the_args, fusion_vars, b1_model, b2_model, tg_feature_model
     correct_ncm = 0
     correct_maml = 0
     total = 0
+    all_pred = np.array([])
+    all_label = np.array([])
     with torch.no_grad():
         for batch_idx, (inputs, targets) in enumerate(evalloader):
             inputs, targets = inputs.to(device), targets.to(device)
@@ -71,8 +73,9 @@ def compute_accuracy(the_args, fusion_vars, b1_model, b2_model, tg_feature_model
                 assert(outputs.shape[1] == scale.shape[1])
                 outputs = outputs / scale.repeat(outputs.shape[0], 1).type(torch.FloatTensor).to(device)
             _, predicted = outputs.max(1)
+            all_pred = np.concatenate([all_pred, predicted.cpu().numpy()])
+            all_label = np.concatenate([all_label, targets.cpu().numpy()])
             correct += predicted.eq(targets).sum().item()
-
             if is_start_iteration:
                 outputs_feature = np.squeeze(tg_feature_model(inputs))
             sqd_icarl = cdist(class_means[:,:,0].T, outputs_feature.cpu(), 'sqeuclidean')
@@ -92,11 +95,16 @@ def compute_accuracy(the_args, fusion_vars, b1_model, b2_model, tg_feature_model
             score_ncm = torch.from_numpy((-sqd_ncm).T).to(device)
             _, predicted_ncm = score_ncm.max(1)
             correct_ncm += predicted_ncm.eq(targets).sum().item()
+    if the_args.dataset == "skin7" or the_args.dataset == "skin40": #key
+        mcr = calculate_mean_class_recall(all_pred ,all_label)
+    else:
+        mcr = 0.0
     if print_info:
         print("  Current accuracy (FC)         :\t\t{:.2f} %".format(100.*correct/total))
         print("  Current accuracy (Proto)      :\t\t{:.2f} %".format(100.*correct_icarl/total))
-        print("  Current accuracy (Proto-UB)   :\t\t{:.2f} %".format(100.*correct_ncm/total))  
+        print("  Current accuracy (Proto-UB)   :\t\t{:.2f} %".format(100.*correct_ncm/total))
+        print("  Mean class recall             :\t\t{:.2f} %".format(100.*mcr))  
     cnn_acc = 100.*correct/total
     icarl_acc = 100.*correct_icarl/total
     ncm_acc = 100.*correct_ncm/total
-    return [cnn_acc, icarl_acc, ncm_acc], fast_fc
+    return [cnn_acc, icarl_acc, ncm_acc], fast_fc, mcr

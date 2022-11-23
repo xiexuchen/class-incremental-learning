@@ -177,6 +177,8 @@ def incremental_train_and_eval(the_args, epochs, fusion_vars, ref_fusion_vars, b
         test_loss = 0
         correct = 0
         total = 0
+        all_pred = np.array([])
+        all_label = np.array([])
         with torch.no_grad():
             for batch_idx, (inputs, targets) in enumerate(testloader):
                 inputs, targets = inputs.to(device), targets.to(device)
@@ -184,11 +186,13 @@ def incremental_train_and_eval(the_args, epochs, fusion_vars, ref_fusion_vars, b
                 loss = nn.CrossEntropyLoss(weight_per_class)(outputs, targets)
                 test_loss += loss.item()
                 _, predicted = outputs.max(1)
+                all_pred = np.concatenate([all_pred, predicted.cpu().numpy()])
+                all_label = np.concatenate([all_label, targets.cpu().numpy()])
                 total += targets.size(0)
                 correct += predicted.eq(targets).sum().item()
-                if the_args.dataset == "skin7": #key
-                    mcr = calculate_mean_class_recall(targets ,predicted)
-        if the_args.dataset == "skin7": #key
+        if the_args.dataset == "skin7" or the_args.dataset == "skin40": #key
+            mcr = calculate_mean_class_recall(all_pred ,all_label)
+        if the_args.dataset == "skin7" or the_args.dataset == "skin40": #key
             print('Test set: {} test loss: {:.4f} accuracy: {:.4f}, mcr:{:.4f}'.format(len(testloader), test_loss/(batch_idx+1), 100.*correct/total, mcr))
         else:
             print('Test set: {} test loss: {:.4f} accuracy: {:.4f}'.format(len(testloader), test_loss/(batch_idx+1), 100.*correct/total))

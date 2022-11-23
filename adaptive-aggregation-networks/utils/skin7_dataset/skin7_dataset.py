@@ -37,12 +37,11 @@ class Skin7(Dataset):
         Returns:
             tuple: (sample, target) where target is class_index of the target class.
         """
-        path = self.data[index]
+        img = self.data[index]
         target = self.targets[index]
-        img = pil_loader(path)
+        # img = pil_loader(path)
         if self.transform is not None:
             img = self.transform(img)
-
         return img, target
 
     def __len__(self):
@@ -51,11 +50,11 @@ class Skin7(Dataset):
     def get_data(self, iterNo, data_dir):
         
         if self.train:
-            # csv = 'split_data/split_data_{}_fold_train.csv'.format(iterNo)
-            csv = 'split_data/balance_train.csv'
+            csv = 'split_data/split_data_{}_fold_train.csv'.format(iterNo)
+            # csv = 'split_data/balance_train.csv'
         else:
-            # csv = 'split_data/split_data_{}_fold_test.csv'.format(iterNo)
-            csv = 'split_data/balance_test.csv' #cannot find this csv
+            csv = 'split_data/split_data_{}_fold_test.csv'.format(iterNo)
+            # csv = 'split_data/balance_test.csv' #cannot find this csv
 
         fn = os.path.join(data_dir, csv)
         print(fn)
@@ -65,8 +64,10 @@ class Skin7(Dataset):
         data = []
         targets = []
         for path, label in raw_data:
-            data.append(os.path.join(self.root,
-                                     "ISIC2018_Task3_Training_Input", path))
+            path = os.path.join(self.root,
+                                     "ISIC2018_Task3_Training_Input", path)
+            image = pil_loader(path)
+            data.append(image)
             targets.append(label)
 
         return data, targets

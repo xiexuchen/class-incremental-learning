@@ -43,6 +43,7 @@ from utils.incremental.compute_features import compute_features
 from utils.incremental.compute_accuracy import compute_accuracy
 from utils.misc import process_mnemonics
 from utils.skin7_dataset import skin7_dataset, skin7_augmentation_dataset
+from utils.sd198_dataset import sd198_dataset
 
 import warnings
 warnings.filterwarnings('ignore') #this might be important when want to filter warnings
@@ -180,15 +181,35 @@ class BaseTrainer(object):
                 transforms.Resize((self.args.image_size, self.args.image_size)),
                 transforms.ToTensor(),
                 transforms.Normalize([0.7720412, 0.54642653, 0.56280327], [0.13829944, 0.1553769, 0.17688483])])
-            self.testset = skin7_augmentation_dataset.Skin7_Augmentation(
+            self.testset = skin7_dataset.Skin7(
             root=os.environ["SKIN7DATASET"], train=False, transform=test_tf)
-            self.evalset = skin7_augmentation_dataset.Skin7_Augmentation(
+            self.evalset = skin7_dataset.Skin7(
             root=os.environ["SKIN7DATASET"], train=False, transform=test_tf) #so far keep the validation set same as testset
             self.balancedset = skin7_dataset.Skin7( #type: dataset
-                root=os.environ["SKIN7DATASET"], train=True, transform=train_tf) #same as train so far
+                root=os.environ["SKIN7DATASET"], train=False, transform=train_tf) #same as train so far
+            self.lr_strat = [int(self.args.epochs*0.333), int(self.args.epochs*0.667)]
+            
             self.dictionary_size = 1500 #maximum sample number for one class
+        elif self.args.dataset == "skin40":
+            train_tf = transforms.Compose([
+                    transforms.Resize((self.args.image_size, self.args.image_size)),
+                    transforms.RandomHorizontalFlip(),
+                    transforms.ToTensor(),
+                    transforms.Normalize([0.60298395, 0.4887822, 0.46266827], [0.25993535, 0.24081337, 0.24418062])]
+                )
+            test_tf = transforms.Compose([
+                transforms.Resize((self.args.image_size, self.args.image_size)),
+                transforms.ToTensor(),
+                transforms.Normalize([0.60298395, 0.4887822, 0.46266827], [0.25993535, 0.24081337, 0.24418062])])
+            self.trainset = sd198_dataset.SD_198(root=os.environ["SD198DATASET"], train=True, transform=train_tf)
+            self.testset = sd198_dataset.SD_198(root=os.environ["SD198DATASET"], train=False, transform=test_tf)
+            self.evalset = sd198_dataset.SD_198(root=os.environ["SD198DATASET"], train=False, transform=test_tf)
+            self.balancedset = sd198_dataset.SD_198(root=os.environ["SD198DATASET"], train=False, transform=train_tf)
+            self.lr_strat = [int(self.args.epochs*0.333), int(self.args.epochs*0.667)]
+            
+        else:
             raise ValueError('Please set the correct dataset.')
-
+            
     def map_labels(self, order_list, Y_set):
         """The function to map the labels according to the class order list.
         Args:
@@ -211,7 +232,7 @@ class BaseTrainer(object):
           X_valid_total: an array that contains all validation samples
           Y_valid_total: an array that contains all validation labels 
         """
-        if self.args.dataset == 'cifar100' or self.args.dataset == "skin7": #key
+        if self.args.dataset == 'cifar100' or self.args.dataset == "skin7" or self.args.dataset == "skin40": #key
             X_train_total = np.array(self.trainset.data) #should be array type
             Y_train_total = np.array(self.trainset.targets)
             X_valid_total = np.array(self.testset.data)
@@ -305,12 +326,12 @@ class BaseTrainer(object):
         """
         # Set an empty to store the indexes for the selected exemplars
         alpha_dr_herding  = np.zeros((int(self.args.num_classes/self.args.nb_cl), dictionary_size, self.args.nb_cl), np.float32)
-        if self.args.dataset == 'cifar100' or self.args.dataset == 'skin7': #key
+        if self.args.dataset == 'cifar100': #key
             # CIFAR-100, directly load the tensors for the training samples
             prototypes = np.zeros((self.args.num_classes, dictionary_size, X_train_total.shape[1], X_train_total.shape[2], X_train_total.shape[3]))
             for orde in range(self.args.num_classes):
                 prototypes[orde,:,:,:,:] = X_train_total[np.where(Y_train_total==order[orde])]
-        elif self.args.dataset == 'imagenet_sub' or self.args.dataset == 'imagenet':
+        elif self.args.dataset == 'imagenet_sub' or self.args.dataset == 'imagenet'  or self.args.dataset == 'skin7' or self.args.dataset == 'skin40':
             # ImageNet, save the paths for the training samples if an array
             prototypes = [[] for i in range(self.args.num_classes)]
             for orde in range(self.args.num_classes):
@@ -525,7 +546,7 @@ class BaseTrainer(object):
         Returns:
           b1_model: the 1st branch model from the current phase, the FC classifier is updated
         """
-        if self.args.dataset == 'cifar100' or self.args.dataset == 'skin7':
+        if self.args.dataset == 'cifar100' or self.args.dataset == 'skin7' or self.args.dataset == 'skin40':
             # Load previous FC weights, transfer them from GPU to CPU
             old_embedding_norm = b1_model.fc.fc1.weight.data.norm(dim=1, keepdim=True)
             average_old_embedding_norm = torch.mean(old_embedding_norm, dim=0).to('cpu').type(torch.DoubleTensor)
@@ -558,7 +579,7 @@ class BaseTrainer(object):
             # Transfer all weights of the model to GPU
             b1_model.to(self.device)
             b1_model.fc.fc2.weight.data = novel_embedding.to(self.device)
-        elif self.args.dataset == 'imagenet_sub' or self.args.dataset == 'imagenet' or self.args.image_size == 224:
+        elif self.args.dataset == 'imagenet_sub' or self.args.dataset == 'imagenet':
             # Load previous FC weights, transfer them from GPU to CPU
             old_embedding_norm = b1_model.fc.fc1.weight.data.norm(dim=1, keepdim=True)
             average_old_embedding_norm = torch.mean(old_embedding_norm, dim=0).to('cpu').type(torch.DoubleTensor)
@@ -609,14 +630,16 @@ class BaseTrainer(object):
           testloader: the test dataloader
         """
         print('Setting the dataloaders ...')
-        if self.args.dataset == 'cifar100' or self.args.dataset == "skin7": #key
+        if self.args.dataset == 'cifar100' or self.args.dataset == "skin7" or self.args.dataset == "skin40": #key
             # Set the training dataloader
-            self.trainset.data = X_train.astype('uint8')
+            if self.args.dataset == 'cifar100':
+                self.trainset.data = X_train.astype('uint8')
             self.trainset.targets = map_Y_train
             trainloader = torch.utils.data.DataLoader(self.trainset, batch_size=self.args.train_batch_size,
                 shuffle=True, num_workers=self.args.num_workers)
             # Set the test dataloader
-            self.testset.data = X_valid_cumul.astype('uint8')
+            if self.args.dataset == 'cifar100':
+                self.testset.data = X_valid_cumul.astype('uint8')
             self.testset.targets = map_Y_valid_cumul
             testloader = torch.utils.data.DataLoader(self.testset, batch_size=self.args.test_batch_size,
                 shuffle=False, num_workers=self.args.num_workers)
@@ -813,7 +836,7 @@ class BaseTrainer(object):
         map_Y_valid_ori = np.array([order_list.index(i) for i in Y_valid_ori])
         print('Computing accuracy on the 0-th phase classes...')
         # Set a temporary dataloader for the 0-th phase data
-        if self.args.dataset == 'cifar100' or self.args.dataset == 'skin7':#key
+        if self.args.dataset == 'cifar100' or self.args.dataset == 'skin7' or self.args.dataset == 'skin40':#key
             self.evalset.data = X_valid_ori.astype('uint8')
             self.evalset.targets = map_Y_valid_ori
             pin_memory = False
@@ -826,7 +849,7 @@ class BaseTrainer(object):
         evalloader = torch.utils.data.DataLoader(self.evalset, batch_size=self.args.eval_batch_size,
                 shuffle=False, num_workers=self.args.num_workers, pin_memory=pin_memory)
         # Compute the accuracies for the 0-th phase test data
-        ori_acc, fast_fc = compute_accuracy(self.args, self.fusion_vars, b1_model, b2_model, tg_feature_model, \
+        ori_acc, fast_fc, mcr = compute_accuracy(self.args, self.fusion_vars, b1_model, b2_model, tg_feature_model, \
             current_means, X_protoset_cumuls, Y_protoset_cumuls, evalloader, \
             order_list, is_start_iteration=is_start_iteration)
         # Add the results to the array, which stores all previous results
@@ -834,11 +857,14 @@ class BaseTrainer(object):
         # Write the results to tensorboard
         self.train_writer.add_scalar('ori_acc/fc', float(ori_acc[0]), iteration)
         self.train_writer.add_scalar('ori_acc/proto', float(ori_acc[1]), iteration)
+        if self.args.dataset == 'skin40':
+            self.train_writer.add_scalar('ori_acc/mcr', float(mcr), iteration)
+        
         # Get mapped labels for the current-phase data, according the the order list
         map_Y_valid_cumul = np.array([order_list.index(i) for i in Y_valid_cumul])
         # Set a temporary dataloader for the current-phase data
         print('Computing cumulative accuracy...')
-        if self.args.dataset == 'cifar100' or self.args.dataset == 'skin7':
+        if self.args.dataset == 'cifar100' or self.args.dataset == 'skin7'or self.args.dataset == 'skin40':
             self.evalset.data = X_valid_cumul.astype('uint8')
             self.evalset.targets = map_Y_valid_cumul
         elif self.args.dataset == 'imagenet_sub' or self.args.dataset == 'imagenet':  
@@ -889,7 +915,7 @@ class BaseTrainer(object):
         tg_feature_model = nn.Sequential(*list(b1_model.children())[:-1])
         # Get the shape for the feature maps
         num_features = b1_model.fc.in_features
-        if self.args.dataset == 'cifar100' or self.args.dataset == 'skin7':#key
+        if self.args.dataset == 'cifar100' or self.args.dataset == 'skin7' or self.args.dataset == "skin40":#key
             for iter_dico in range(last_iter*self.args.nb_cl, (iteration+1)*self.args.nb_cl):
                 # Set a temporary dataloader for the current class
                 self.evalset.data = prototypes[iter_dico].astype('uint8')
@@ -953,7 +979,7 @@ class BaseTrainer(object):
         # Set two empty lists for the exemplars and the labels 
         X_protoset_cumuls = []
         Y_protoset_cumuls = []
-        if self.args.dataset == 'cifar100' or self.args.dataset == 'skin7':
+        if self.args.dataset == 'cifar100' or self.args.dataset == 'skin7' or self.args.dataset == 'skin40':
             if self.args.image_size == 224:
                 class_means = np.zeros((num_features,100,2))
             else:

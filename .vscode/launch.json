@@ -20,7 +20,13 @@
             "args": ["--nb_cl_fg","2","--nb_cl","1","--gpu","2","--random_seed","32",
                 "--baseline","lucir","--branch_mode","dual","--branch_1","ss",
                 "--branch_2","free","--dataset","skin7","--epochs","10",
-                "--disable_gpu_occupancy", "--image_size", "224","--K","1"]
+                "--disable_gpu_occupancy", "--image_size", "224","--K","1","--num_classes","7",
+            "--custom_weight_decay","0.0005","--the_lambda","10","--dist","0.5",
+        "--lw_mr","1","--base_lr1","0.05","--base_lr2","0.05","--dynamic_budget"]
+            // "args": ["--nb_cl_fg","10","--nb_cl","10","--gpu","2","--random_seed","32",
+            // "--baseline","lucir","--branch_mode","dual","--branch_1","ss",
+            // "--branch_2","free","--dataset","skin40","--epochs","10",
+            // "--disable_gpu_occupancy", "--image_size", "224","--K","5"]
         }
     ]
 }

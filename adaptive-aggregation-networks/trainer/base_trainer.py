@@ -171,7 +171,7 @@ class BaseTrainer(object):
             self.network = modified_resnet.resnet34
             self.network_mtl = modified_resnetmtl.resnetmtl34
             train_tf = transforms.Compose([
-                transforms.Resize(self.args.image_size),
+                transforms.Resize((self.args.image_size, self.args.image_size)),
                 transforms.RandomHorizontalFlip(),
                 transforms.ToTensor(),
                 transforms.Normalize( [0.7615711, 0.56942874, 0.5994554],  [0.12556943, 0.13925466, 0.15403599])])
@@ -332,7 +332,7 @@ class BaseTrainer(object):
             for orde in range(self.args.num_classes):
                 prototypes[orde,:,:,:,:] = X_train_total[np.where(Y_train_total==order[orde])]
         elif self.args.dataset == 'imagenet_sub' or self.args.dataset == 'imagenet'  or self.args.dataset == 'skin7' or self.args.dataset == 'skin40':
-            # ImageNet, save the paths for the training samples if an array
+            # ImageNet, save the paths for the training samples if the array is too big
             prototypes = [[] for i in range(self.args.num_classes)]
             for orde in range(self.args.num_classes):
                 prototypes[orde] = X_train_total[np.where(Y_train_total==order[orde])]
@@ -546,7 +546,7 @@ class BaseTrainer(object):
         Returns:
           b1_model: the 1st branch model from the current phase, the FC classifier is updated
         """
-        if self.args.dataset == 'cifar100' or self.args.dataset == 'skin7' or self.args.dataset == 'skin40':
+        if self.args.dataset == 'cifar100':
             # Load previous FC weights, transfer them from GPU to CPU
             old_embedding_norm = b1_model.fc.fc1.weight.data.norm(dim=1, keepdim=True)
             average_old_embedding_norm = torch.mean(old_embedding_norm, dim=0).to('cpu').type(torch.DoubleTensor)
@@ -611,6 +611,39 @@ class BaseTrainer(object):
             # Transfer all weights of the model to GPU
             b1_model.to(self.device)
             b1_model.fc.fc2.weight.data = novel_embedding.to(self.device)
+        elif self.args.dataset == 'skin7' or self.args.dataset == 'skin40':
+            # Load previous FC weights, transfer them from GPU to CPU
+            old_embedding_norm = b1_model.fc.fc1.weight.data.norm(dim=1, keepdim=True)
+            average_old_embedding_norm = torch.mean(old_embedding_norm, dim=0).to('cpu').type(torch.DoubleTensor)
+            # tg_feature_model is b1_model without the FC layer
+            tg_feature_model = nn.Sequential(*list(b1_model.children())[:-1])
+            # Get the shape of the feature inputted to the FC layers, i.e., the shape for the final feature maps
+            num_features = b1_model.fc.in_features
+            print("num features is {}".format(num_features))
+            # Intialize the new FC weights with zeros
+            novel_embedding = torch.zeros((self.args.nb_cl, num_features))
+            for cls_idx in range(iteration*self.args.nb_cl, (iteration+1)*self.args.nb_cl):
+                # Get the indexes of samples for one class
+                cls_indices = np.array([i == cls_idx  for i in map_Y_train])
+                # Check the number of samples in this class
+                assert(len(np.where(cls_indices==1)[0])<=dictionary_size)
+                # Set a temporary dataloader for the current class
+                self.evalset.data = X_train[cls_indices]
+                self.evalset.targets = np.zeros(self.evalset.data.shape[0])
+                evalloader = torch.utils.data.DataLoader(self.evalset, batch_size=self.args.eval_batch_size,
+                    shuffle=False, num_workers=self.args.num_workers)
+                num_samples = self.evalset.data.shape[0]
+                # Compute the feature maps using the current model
+                cls_features = compute_features(self.args, self.fusion_vars, b1_model, b2_model, \
+                    tg_feature_model, is_start_iteration, evalloader, num_samples, num_features)
+                # Compute the normalized feature maps 
+                norm_features = F.normalize(torch.from_numpy(cls_features), p=2, dim=1)
+                # Update the FC weights using the imprint weights, i.e., the normalized averged feature maps 
+                cls_embedding = torch.mean(norm_features, dim=0)
+                novel_embedding[cls_idx-iteration*self.args.nb_cl] = F.normalize(cls_embedding, p=2, dim=0) * average_old_embedding_norm
+            # Transfer all weights of the model to GPU
+            b1_model.to(self.device)
+            b1_model.fc.fc2.weight.data = novel_embedding.to(self.device)
         else:
             raise ValueError('Please set correct dataset.')
         return b1_model
@@ -630,16 +663,14 @@ class BaseTrainer(object):
           testloader: the test dataloader
         """
         print('Setting the dataloaders ...')
-        if self.args.dataset == 'cifar100' or self.args.dataset == "skin7" or self.args.dataset == "skin40": #key
+        if self.args.dataset == 'cifar100': #key
             # Set the training dataloader
-            if self.args.dataset == 'cifar100':
-                self.trainset.data = X_train.astype('uint8')
-            self.trainset.targets = map_Y_train
+            self.trainset.data = X_train.astype('uint8') #set current trainset data and set current test set data
+            self.trainset.targets = map_Y_train 
             trainloader = torch.utils.data.DataLoader(self.trainset, batch_size=self.args.train_batch_size,
                 shuffle=True, num_workers=self.args.num_workers)
             # Set the test dataloader
-            if self.args.dataset == 'cifar100':
-                self.testset.data = X_valid_cumul.astype('uint8')
+            self.testset.data = X_valid_cumul.astype('uint8')
             self.testset.targets = map_Y_valid_cumul
             testloader = torch.utils.data.DataLoader(self.testset, batch_size=self.args.test_batch_size,
                 shuffle=False, num_workers=self.args.num_workers)
@@ -652,6 +683,16 @@ class BaseTrainer(object):
             # Set the test dataloader
             current_test_imgs = merge_images_labels(X_valid_cumul, map_Y_valid_cumul)
             self.testset.imgs = self.testset.samples = current_test_imgs
+            testloader = torch.utils.data.DataLoader(self.testset, batch_size=self.args.test_batch_size,
+                shuffle=False, num_workers=self.args.num_workers)
+        elif self.args.dataset == "skin7" or self.args.dataset == "skin40":
+            self.trainset.data = X_train #set current trainset data and set current test set data
+            self.trainset.targets = map_Y_train 
+            trainloader = torch.utils.data.DataLoader(self.trainset, batch_size=self.args.train_batch_size,
+                shuffle=True, num_workers=self.args.num_workers)
+            # Set the test dataloader
+            self.testset.data = X_valid_cumul
+            self.testset.targets = map_Y_valid_cumul
             testloader = torch.utils.data.DataLoader(self.testset, batch_size=self.args.test_batch_size,
                 shuffle=False, num_workers=self.args.num_workers)
         else:
@@ -765,7 +806,7 @@ class BaseTrainer(object):
         Return:
           balancedloader: the balanced dataloader for the exemplars
         """
-        if self.args.dataset == 'cifar100' or self.args.dataset == "skin7": #key
+        if self.args.dataset == 'cifar100': #key
             # Load the training samples for the current phase
             X_train_this_step = X_train_total[indices_train_10]
             Y_train_this_step = Y_train_total[indices_train_10]
@@ -799,6 +840,21 @@ class BaseTrainer(object):
             self.balancedset.imgs = self.balancedset.samples = current_train_imgs
             balancedloader = torch.utils.data.DataLoader(self.balancedset, batch_size=self.args.test_batch_size, \
             shuffle=False, num_workers=self.args.num_workers)
+        elif self.args.dataset == "skin7" or self.args.dataset == "skin40":
+            X_train_this_step = X_train_total[indices_train_10]
+            Y_train_this_step = Y_train_total[indices_train_10]
+
+            # Using random index to select the exemplars for the current phase (before training)
+            the_idx = np.random.randint(0,len(X_train_this_step),size=self.args.nb_cl*self.args.nb_protos)
+            
+            # Merge the current-phase exemplars and the old exemplars
+            X_balanced_this_step = np.concatenate((X_train_this_step[the_idx],X_protoset),axis=0)
+            Y_balanced_this_step = np.concatenate((Y_train_this_step[the_idx],Y_protoset),axis=0)
+            map_Y_train_this_step = np.array([order_list.index(i) for i in Y_balanced_this_step])
+            # Build the balanced dataloader
+            self.balancedset.data = X_balanced_this_step
+            self.balancedset.targets = map_Y_train_this_step               
+            balancedloader = torch.utils.data.DataLoader(self.balancedset, batch_size=self.args.test_batch_size, shuffle=False, num_workers=self.args.num_workers)
         else:
             raise ValueError('Please set the correct dataset.')
         return balancedloader
@@ -836,7 +892,7 @@ class BaseTrainer(object):
         map_Y_valid_ori = np.array([order_list.index(i) for i in Y_valid_ori])
         print('Computing accuracy on the 0-th phase classes...')
         # Set a temporary dataloader for the 0-th phase data
-        if self.args.dataset == 'cifar100' or self.args.dataset == 'skin7' or self.args.dataset == 'skin40':#key
+        if self.args.dataset == 'cifar100':
             self.evalset.data = X_valid_ori.astype('uint8')
             self.evalset.targets = map_Y_valid_ori
             pin_memory = False
@@ -844,6 +900,10 @@ class BaseTrainer(object):
             current_eval_set = merge_images_labels(X_valid_ori, map_Y_valid_ori)
             self.evalset.imgs = self.evalset.samples = current_eval_set
             pin_memory = True
+        elif self.args.dataset == 'skin7' or self.args.dataset == 'skin40':#key
+            self.evalset.data = X_valid_ori
+            self.evalset.targets = map_Y_valid_ori
+            pin_memory = False #pin memory?
         else:
             raise ValueError('Please set the correct dataset.')
         evalloader = torch.utils.data.DataLoader(self.evalset, batch_size=self.args.eval_batch_size,
@@ -864,18 +924,21 @@ class BaseTrainer(object):
         map_Y_valid_cumul = np.array([order_list.index(i) for i in Y_valid_cumul])
         # Set a temporary dataloader for the current-phase data
         print('Computing cumulative accuracy...')
-        if self.args.dataset == 'cifar100' or self.args.dataset == 'skin7'or self.args.dataset == 'skin40':
+        if self.args.dataset == 'cifar100':
             self.evalset.data = X_valid_cumul.astype('uint8')
             self.evalset.targets = map_Y_valid_cumul
         elif self.args.dataset == 'imagenet_sub' or self.args.dataset == 'imagenet':  
             current_eval_set = merge_images_labels(X_valid_cumul, map_Y_valid_cumul)
             self.evalset.imgs = self.evalset.samples = current_eval_set
+        elif self.args.dataset == 'skin7'or self.args.dataset == 'skin40':
+            self.evalset.data = X_valid_cumul
+            self.evalset.targets = map_Y_valid_cumul
         else:
             raise ValueError('Please set the correct dataset.')
         evalloader = torch.utils.data.DataLoader(self.evalset, batch_size=self.args.eval_batch_size,
                 shuffle=False, num_workers=self.args.num_workers, pin_memory=pin_memory)    
         # Compute the accuracies for the current-phase data    
-        cumul_acc, _ = compute_accuracy(self.args, self.fusion_vars, b1_model, b2_model, tg_feature_model, \
+        cumul_acc, _, cumul_mcr = compute_accuracy(self.args, self.fusion_vars, b1_model, b2_model, tg_feature_model, \
             current_means, X_protoset_cumuls, Y_protoset_cumuls, evalloader, order_list, \
             is_start_iteration=is_start_iteration, fast_fc=fast_fc)
         # Add the results to the array, which stores all previous results
@@ -883,6 +946,7 @@ class BaseTrainer(object):
         # Write the results to tensorboard
         self.train_writer.add_scalar('cumul_acc/fc', float(cumul_acc[0]), iteration)
         self.train_writer.add_scalar('cumul_acc/proto', float(cumul_acc[1]), iteration)
+        self.train_writer.add_scalar('cumul_mcr/fc', float(cumul_mcr), iteration)
 
         return top1_acc_list_ori, top1_acc_list_cumul
 
@@ -915,10 +979,10 @@ class BaseTrainer(object):
         tg_feature_model = nn.Sequential(*list(b1_model.children())[:-1])
         # Get the shape for the feature maps
         num_features = b1_model.fc.in_features
-        if self.args.dataset == 'cifar100' or self.args.dataset == 'skin7' or self.args.dataset == "skin40":#key
+        if self.args.dataset == 'cifar100':#key
             for iter_dico in range(last_iter*self.args.nb_cl, (iteration+1)*self.args.nb_cl):
                 # Set a temporary dataloader for the current class
-                self.evalset.data = prototypes[iter_dico].astype('uint8')
+                self.evalset.data = prototypes[iter_dico].astype('uint8') #protypes: class_num * max sample per class * three channel
                 self.evalset.targets = np.zeros(self.evalset.data.shape[0])
                 evalloader = torch.utils.data.DataLoader(self.evalset, batch_size=self.args.eval_batch_size,
                     shuffle=False, num_workers=self.args.num_workers)
@@ -939,8 +1003,8 @@ class BaseTrainer(object):
                 while not(np.sum(alpha_dr_herding[index1,:,index2]!=0)==min(nb_protos_cl,500)) and iter_herding_eff<1000:
                     tmp_t   = np.dot(w_t,D)
                     ind_max = np.argmax(tmp_t)
-                    iter_herding_eff += 1
-                    if alpha_dr_herding[index1,ind_max,index2] == 0:
+                    iter_herding_eff += 1#alpha_herding: task_num * image_num * class_num
+                    if alpha_dr_herding[index1,ind_max,index2] == 0:#alpha_herding: 20*500*5 for cifar100
                         alpha_dr_herding[index1,ind_max,index2] = 1+iter_herding
                         iter_herding += 1
                     w_t = w_t+mu-D[:,ind_max]
@@ -974,12 +1038,42 @@ class BaseTrainer(object):
                         alpha_dr_herding[index1,ind_max,index2] = 1+iter_herding
                         iter_herding += 1
                     w_t = w_t+mu-D[:,ind_max]
+        elif self.args.dataset == 'skin7' or self.args.dataset == "skin40":
+            for iter_dico in range(last_iter*self.args.nb_cl, (iteration+1)*self.args.nb_cl):
+                # Set a temporary dataloader for the current class
+                self.evalset.data = prototypes[iter_dico]
+                self.evalset.targets = np.zeros(self.evalset.data.shape[0])
+                evalloader = torch.utils.data.DataLoader(self.evalset, batch_size=self.args.eval_batch_size,
+                    shuffle=False, num_workers=self.args.num_workers)
+                num_samples = self.evalset.data.shape[0]
+                # Compute the features for the current class          
+                mapped_prototypes = compute_features(self.args, self.fusion_vars, b1_model, b2_model, \
+                    tg_feature_model, is_start_iteration, evalloader, num_samples, num_features)
+                # Herding algorithm
+                D = mapped_prototypes.T
+                D = D/np.linalg.norm(D,axis=0)
+                mu  = np.mean(D,axis=1)
+                index1 = int(iter_dico/self.args.nb_cl)
+                index2 = iter_dico % self.args.nb_cl
+                alpha_dr_herding[index1,:,index2] = alpha_dr_herding[index1,:,index2]*0
+                w_t = mu
+                iter_herding     = 0
+                iter_herding_eff = 0
+                while not(np.sum(alpha_dr_herding[index1,:,index2]!=0)==min(nb_protos_cl,500)) and iter_herding_eff<1000:
+                    tmp_t   = np.dot(w_t,D)
+                    ind_max = np.argmax(tmp_t)
+                    iter_herding_eff += 1
+                    if alpha_dr_herding[index1,ind_max,index2] == 0:
+                        alpha_dr_herding[index1,ind_max,index2] = 1+iter_herding
+                        iter_herding += 1
+                    w_t = w_t+mu-D[:,ind_max]
         else:
             raise ValueError('Please set the correct dataset.')
         # Set two empty lists for the exemplars and the labels 
         X_protoset_cumuls = []
         Y_protoset_cumuls = []
-        if self.args.dataset == 'cifar100' or self.args.dataset == 'skin7' or self.args.dataset == 'skin40':
+        
+        if self.args.dataset == 'cifar100': #key
             if self.args.image_size == 224:
                 class_means = np.zeros((num_features,100,2))
             else:
@@ -1033,6 +1127,38 @@ class BaseTrainer(object):
                     mapped_prototypes = compute_features(self.args, self.fusion_vars, b1_model, b2_model, \
                         tg_feature_model, is_start_iteration, evalloader, num_samples, num_features)
                     D = mapped_prototypes.T
+                    D = D/np.linalg.norm(D,axis=0)
+                    D2 = D
+                    # Using the indexes selected by herding
+                    alph = alpha_dr_herding[iteration2,:,iter_dico]
+                    assert((alph[num_samples:]==0).all())
+                    alph = alph[:num_samples]
+                    alph = (alph>0)*(alph<nb_protos_cl+1)*1.
+                    # Add the exemplars and the labels to the lists
+                    X_protoset_cumuls.append(prototypes[iteration2*self.args.nb_cl+iter_dico][np.where(alph==1)[0]])
+                    Y_protoset_cumuls.append(order[iteration2*self.args.nb_cl+iter_dico]*np.ones(len(np.where(alph==1)[0])))
+                    # Compute the class mean values   
+                    alph = alph/np.sum(alph)
+                    class_means[:,current_cl[iter_dico],0] = (np.dot(D,alph)+np.dot(D2,alph))/2
+                    class_means[:,current_cl[iter_dico],0] /= np.linalg.norm(class_means[:,current_cl[iter_dico],0])
+                    alph = np.ones(num_samples)/num_samples
+                    class_means[:,current_cl[iter_dico],1] = (np.dot(D,alph)+np.dot(D2,alph))/2
+                    class_means[:,current_cl[iter_dico],1] /= np.linalg.norm(class_means[:,current_cl[iter_dico],1])
+        elif self.args.dataset == 'skin7' or self.args.dataset == 'skin40':
+            if self.args.image_size == 224:
+                class_means = np.zeros((num_features,self.args.num_classes,2))
+            for iteration2 in range(iteration+1):
+                for iter_dico in range(self.args.nb_cl):
+                    # Compute the D and D2 matrizes, which are used to compute the class mean values
+                    current_cl = order[range(iteration2*self.args.nb_cl,(iteration2+1)*self.args.nb_cl)]
+                    self.evalset.data = prototypes[iteration2*self.args.nb_cl+iter_dico]
+                    self.evalset.targets = np.zeros(self.evalset.data.shape[0])
+                    evalloader = torch.utils.data.DataLoader(self.evalset, batch_size=self.args.eval_batch_size,
+                        shuffle=False, num_workers=self.args.num_workers)
+                    num_samples = len(prototypes[iteration2*self.args.nb_cl+iter_dico])
+                    mapped_prototypes = compute_features(self.args, self.fusion_vars, b1_model, b2_model, \
+                        tg_feature_model, is_start_iteration, evalloader, num_samples, num_features)
+                    D = mapped_prototypes.T #same as imagenet
                     D = D/np.linalg.norm(D,axis=0)
                     D2 = D
                     # Using the indexes selected by herding

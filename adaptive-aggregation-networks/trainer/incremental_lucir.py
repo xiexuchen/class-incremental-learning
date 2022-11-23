@@ -99,7 +99,8 @@ def incremental_train_and_eval(the_args, epochs, fusion_vars, ref_fusion_vars, b
         # Print the information
         print('\nEpoch: %d, learning rate: ' % epoch, end='')
         print(tg_lr_scheduler.get_lr()[0])
-
+        all_pred = np.array([])
+        all_label = np.array([])
         for batch_idx, (inputs, targets) in enumerate(trainloader):
 
             # Get a batch of training samples, transfer them to the device
@@ -155,9 +156,16 @@ def incremental_train_and_eval(the_args, epochs, fusion_vars, ref_fusion_vars, b
             _, predicted = outputs.max(1)
             total += targets.size(0)
             correct += predicted.eq(targets).sum().item()
-
+            all_pred = np.concatenate([all_pred, predicted.cpu().numpy()])
+            all_label = np.concatenate([all_label, targets.cpu().numpy()])
         # Print the training losses and accuracies
-        print('Train set: {}, train loss1: {:.4f}, train loss2: {:.4f}, train loss3: {:.4f}, train loss: {:.4f} accuracy: {:.4f}'.format(len(trainloader), train_loss1/(batch_idx+1), train_loss2/(batch_idx+1), train_loss3/(batch_idx+1), train_loss/(batch_idx+1), 100.*correct/total))
+        if the_args.dataset == "skin7" or the_args.dataset == "skin40": #key
+            mcr = calculate_mean_class_recall(all_label, all_pred)
+            print('Train set: {}, train loss1: {:.4f}, train loss2: {:.4f}, train loss3: {:.4f}, train loss: {:.4f} accuracy: {:.4f}, mcr:{:.4f}'.format(len(trainloader), train_loss1/(batch_idx+1), train_loss2/(batch_idx+1),\
+                train_loss3/(batch_idx+1), train_loss/(batch_idx+1), 100.*correct/total, 100.* mcr))
+            
+        else:
+            print('Train set: {}, train loss1: {:.4f}, train loss2: {:.4f}, train loss3: {:.4f}, train loss: {:.4f} accuracy: {:.4f}'.format(len(trainloader), train_loss1/(batch_idx+1), train_loss2/(batch_idx+1), train_loss3/(batch_idx+1), train_loss/(batch_idx+1), 100.*correct/total))
         
         # Update the aggregation weights
         b1_model.eval()
@@ -191,9 +199,9 @@ def incremental_train_and_eval(the_args, epochs, fusion_vars, ref_fusion_vars, b
                 total += targets.size(0)
                 correct += predicted.eq(targets).sum().item()
         if the_args.dataset == "skin7" or the_args.dataset == "skin40": #key
-            mcr = calculate_mean_class_recall(all_pred ,all_label)
+            mcr = calculate_mean_class_recall(all_label, all_pred)
         if the_args.dataset == "skin7" or the_args.dataset == "skin40": #key
-            print('Test set: {} test loss: {:.4f} accuracy: {:.4f}, mcr:{:.4f}'.format(len(testloader), test_loss/(batch_idx+1), 100.*correct/total, mcr))
+            print('Test set: {} test loss: {:.4f} accuracy: {:.4f}, mcr:{:.4f}'.format(len(testloader), test_loss/(batch_idx+1), 100.*correct/total, 100.* mcr))
         else:
             print('Test set: {} test loss: {:.4f} accuracy: {:.4f}'.format(len(testloader), test_loss/(batch_idx+1), 100.*correct/total))
             

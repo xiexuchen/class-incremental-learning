@@ -85,7 +85,7 @@ class SD_198(Dataset):
     def __getitem__(self, idx):
         path = self.data[idx]
         target = self.targets[idx]
-        img = pil_loader(path)
+        # img = pil_loader(path)
         if self.transform is not None:
             img = self.transform(img)
         return img, target

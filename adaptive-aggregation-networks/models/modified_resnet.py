@@ -191,8 +191,10 @@ def resnet18(pretrained=True, **kwargs):
         model = load_pretrained_model(model, pretrained="resnet18")
     return model
 
-def resnet34(pretrained=False, **kwargs):
+def resnet34(pretrained=True, **kwargs):
     model = ResNet(BasicBlock, [3, 4, 6, 3], **kwargs)
+    if pretrained:
+        model = load_pretrained_model(model, pretrained="resnet34")
     return model
 
 def resnet50(pretrained=True, **kwargs):

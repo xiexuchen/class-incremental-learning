@@ -52,7 +52,8 @@ def incremental_train_and_eval_zeroth_phase(the_args, epochs, b1_model, ref_mode
         # Print the information
         print('\nEpoch: %d, learning rate: ' % epoch, end='')
         print(tg_lr_scheduler.get_lr()[0])
-
+        all_pred = np.array([])
+        all_label = np.array([])
         for batch_idx, (inputs, targets) in enumerate(trainloader):
             # Get a batch of training samples, transfer them to the device
             inputs, targets = inputs.to(device), targets.to(device)
@@ -68,17 +69,25 @@ def incremental_train_and_eval_zeroth_phase(the_args, epochs, b1_model, ref_mode
             # Record the losses and the number of samples to compute the accuracy
             train_loss += loss.item()
             _, predicted = outputs.max(1)
+            all_label = np.concatenate([all_label, targets.cpu().numpy()])
+            all_pred = np.concatenate([all_pred, predicted.cpu().numpy()])
             total += targets.size(0)
             correct += predicted.eq(targets).sum().item()
-
+        mcr = calculate_mean_class_recall(all_label, all_pred)
+            
         # Print the training losses and accuracies
-        print('Train set: {}, train loss: {:.4f} accuracy: {:.4f}'.format(len(trainloader), train_loss/(batch_idx+1), 100.*correct/total))
+        if the_args.dataset == "skin7" or the_args.dataset == "skin40":
+            print('Train set: {}, train loss: {:.4f} accuracy: {:.4f}, mcr:{:.4f}'.format(len(trainloader), train_loss/(batch_idx+1), 100.*correct/total,100.*mcr))
+        else:
+            print('Train set: {}, train loss: {:.4f} accuracy: {:.4f}'.format(len(trainloader), train_loss/(batch_idx+1), 100.*correct/total))
 
         # Running the test for this epoch
         b1_model.eval()
         test_loss = 0
         correct = 0
         total = 0
+        all_pred = np.array([])
+        all_label = np.array([])
         with torch.no_grad():
             for batch_idx, (inputs, targets) in enumerate(testloader):
                 inputs, targets = inputs.to(device), targets.to(device)
@@ -86,8 +95,16 @@ def incremental_train_and_eval_zeroth_phase(the_args, epochs, b1_model, ref_mode
                 loss = nn.CrossEntropyLoss(weight_per_class)(outputs, targets)
                 test_loss += loss.item()
                 _, predicted = outputs.max(1)
+                all_label = np.concatenate([all_label, targets.cpu().numpy()])
+                all_pred = np.concatenate([all_pred, predicted.cpu().numpy()])
                 total += targets.size(0)
                 correct += predicted.eq(targets).sum().item()
-        print('Test set: {} test loss: {:.4f} accuracy: {:.4f}'.format(len(testloader), test_loss/(batch_idx+1), 100.*correct/total))
+        mcr = calculate_mean_class_recall(all_label, all_pred)#recalculate because now is test time
+        
+        if the_args.dataset == "skin7" or the_args.dataset == "skin40":
+            print('Test set: {} test loss: {:.4f} accuracy: {:.4f}, mcr:{:.4f}'.format(len(testloader), test_loss/(batch_idx+1), \
+                100.*correct/total, 100.*mcr ))
+        else:
+            print('Test set: {} test loss: {:.4f} accuracy: {:.4f}'.format(len(testloader), test_loss/(batch_idx+1), 100.*correct/total))
 
     return b1_model

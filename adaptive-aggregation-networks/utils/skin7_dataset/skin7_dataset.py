@@ -37,7 +37,7 @@ class Skin7(Dataset):
         Returns:
             tuple: (sample, target) where target is class_index of the target class.
         """
-        img = self.data[index]
+        img = self.data[index] #img is Image-type
         target = self.targets[index]
         # img = pil_loader(path)
         if self.transform is not None:

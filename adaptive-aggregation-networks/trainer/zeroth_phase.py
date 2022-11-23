@@ -23,7 +23,7 @@ import torch.nn.functional as F
 def incremental_train_and_eval_zeroth_phase(the_args, epochs, b1_model, ref_model, \
     tg_optimizer, tg_lr_scheduler, trainloader, testloader, iteration, start_iteration, \
     lamda, dist, K, lw_mr, fix_bn=False, weight_per_class=None, device=None):
-
+#zero phase doesnt consider any of the 
     # Setting up the CUDA device
     if device is None:
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")

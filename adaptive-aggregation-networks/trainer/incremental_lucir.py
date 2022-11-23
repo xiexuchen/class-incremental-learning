@@ -163,7 +163,7 @@ def incremental_train_and_eval(the_args, epochs, fusion_vars, ref_fusion_vars, b
         b1_model.eval()
         b2_model.eval()
      
-        for batch_idx, (inputs, targets) in enumerate(balancedloader):
+        for batch_idx, (inputs, targets) in enumerate(balancedloader): #use balanced data to update the weights
             if batch_idx <= 500:
                 inputs, targets = inputs.to(device), targets.to(device)
                 outputs, _ = process_inputs_fp(the_args, fusion_vars, b1_model, b2_model, inputs)

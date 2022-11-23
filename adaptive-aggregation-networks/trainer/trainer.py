@@ -184,7 +184,7 @@ class Trainer(BaseTrainer):
             avg_cumul_acc_fc = np.sum(top1_acc_list_cumul[start_iter:,0])/num_of_testing
             avg_cumul_acc_icarl = np.sum(top1_acc_list_cumul[start_iter:,1])/num_of_testing
             print('Computing average accuracy...')
-            print("  Average accuracy (FC)         :\t\t{:.2f} %".format(avg_cumul_acc_fc))
+            print("  Average accuracy (FC)         :\t\t{:.2f} %".format(avg_cumul_acc_fc)) #should consider this metric as average final accuracy
             print("  Average accuracy (Proto)      :\t\t{:.2f} %".format(avg_cumul_acc_icarl))
 
             # Write the results to the tensorboard

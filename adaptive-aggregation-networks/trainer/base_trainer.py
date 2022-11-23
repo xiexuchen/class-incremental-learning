@@ -42,8 +42,10 @@ from utils.imagenet.utils_dataset import merge_images_labels
 from utils.incremental.compute_features import compute_features
 from utils.incremental.compute_accuracy import compute_accuracy
 from utils.misc import process_mnemonics
+from utils.skin7_dataset import skin7_dataset, skin7_augmentation_dataset
+
 import warnings
-warnings.filterwarnings('ignore')
+warnings.filterwarnings('ignore') #this might be important when want to filter warnings
 
 class BaseTrainer(object):
     """The class that contains the code for base trainer class.
@@ -91,7 +93,7 @@ class BaseTrainer(object):
 
     def set_dataset_variables(self): #the dataset path, the data transform is done here
         """The function to set the dataset parameters."""
-        if self.args.dataset == 'cifar100':
+        if self.args.dataset == 'cifar100':#key
             # Set CIFAR-100
             # Set the pre-processing steps for training set
             mean = [0.5019, 0.4835, 0.4374]
@@ -163,7 +165,29 @@ class BaseTrainer(object):
             self.lr_strat = [int(self.args.epochs*0.333), int(self.args.epochs*0.667)]
             # Set the dictionary size
             self.dictionary_size = 1500
-        else:
+        elif self.args.dataset == "skin7":
+            self.network = modified_resnet.resnet34
+            self.network_mtl = modified_resnetmtl.resnetmtl34
+            train_tf = transforms.Compose([
+                transforms.Resize(self.img_size),
+                transforms.RandomHorizontalFlip(),
+                transforms.ToTensor(),
+                transforms.Normalize(self.mean, self.std)])
+            self.trainset = skin7_dataset.Skin7( #type: dataset
+                root=os.environ["SKIN7DATASET"], train=True, transform=train_tf)
+            
+            test_tf = transforms.Compose([
+                transforms.Resize((self.img_size, self.img_size)),
+                transforms.ToTensor(),
+                transforms.Normalize(self.mean, self.std)])
+            self.testset = skin7_augmentation_dataset.Skin7_Augmentation(
+            root=os.environ["SKIN7DATASET"], train=False, transform=test_tf)
+            self.evalset = skin7_augmentation_dataset.Skin7_Augmentation(
+            root=os.environ["SKIN7DATASET"], train=False, transform=test_tf) #so far keep the validation set same as testset
+            self.evalset = skin7_dataset.Skin7( #type: dataset
+                root=os.environ["SKIN7DATASET"], train=True, transform=train_tf) #same as train so far
+            self.dictionary_size = 1500 #maximum sample number for one class
+            
             raise ValueError('Please set the correct dataset.')
 
     def map_labels(self, order_list, Y_set):
@@ -188,8 +212,8 @@ class BaseTrainer(object):
           X_valid_total: an array that contains all validation samples
           Y_valid_total: an array that contains all validation labels 
         """
-        if self.args.dataset == 'cifar100':
-            X_train_total = np.array(self.trainset.data)
+        if self.args.dataset == 'cifar100' or self.args.dataset == "skin7": #key
+            X_train_total = np.array(self.trainset.data) #should be array type
             Y_train_total = np.array(self.trainset.targets)
             X_valid_total = np.array(self.testset.data)
             Y_valid_total = np.array(self.testset.targets)
@@ -204,6 +228,7 @@ class BaseTrainer(object):
     def init_fusion_vars(self): #the aggregation weights
         """The function to initialize the aggregation weights."""
         #it depends on how many layers that backbone has
+        #if using image_size 224 oriented backbone, should be four layers
         self.fusion_vars = nn.ParameterList()
         if self.args.dataset == 'cifar100' and self.args.image_size != 224: #8 place to change if dataset change
             # CIFAR-100, the number of blocks: 3
@@ -281,7 +306,7 @@ class BaseTrainer(object):
         """
         # Set an empty to store the indexes for the selected exemplars
         alpha_dr_herding  = np.zeros((int(self.args.num_classes/self.args.nb_cl), dictionary_size, self.args.nb_cl), np.float32)
-        if self.args.dataset == 'cifar100': #2 place to change if change dataset
+        if self.args.dataset == 'cifar100' or self.args.dataset == 'skin7': #key
             # CIFAR-100, directly load the tensors for the training samples
             prototypes = np.zeros((self.args.num_classes, dictionary_size, X_train_total.shape[1], X_train_total.shape[2], X_train_total.shape[3]))
             for orde in range(self.args.num_classes):
@@ -445,14 +470,14 @@ class BaseTrainer(object):
         indices_test_10 = np.array([i in order[range(last_iter*self.args.nb_cl,(iteration+1)*self.args.nb_cl)] for i in Y_valid_total])
                 
         # Get the samples according to the indexes
-        X_train = X_train_total[indices_train_10]
+        X_train = X_train_total[indices_train_10] #X_train means current task samples
         X_valid = X_valid_total[indices_test_10]
 
         # Add the new-class samples to the cumulative X array
         X_valid_cumuls.append(X_valid)
         X_train_cumuls.append(X_train)
-        X_valid_cumul = np.concatenate(X_valid_cumuls)
-        X_train_cumul = np.concatenate(X_train_cumuls)
+        X_valid_cumul = np.concatenate(X_valid_cumuls) #ends with _cumul means all the task samples so far, used as test
+        X_train_cumul = np.concatenate(X_train_cumuls) #X_train_cumul means all the train samples cumulative til now
 
         # Get the labels according to the indexes, and add them to the cumulative Y array
         Y_train = Y_train_total[indices_train_10]
@@ -471,7 +496,7 @@ class BaseTrainer(object):
             X_protoset = np.concatenate(X_protoset_cumuls)
             Y_protoset = np.concatenate(Y_protoset_cumuls)
             # Create the training samples/labels for the current phase training
-            X_train = np.concatenate((X_train,X_protoset),axis=0)
+            X_train = np.concatenate((X_train,X_protoset),axis=0) #so the train samples can get part of old samples train together
             Y_train = np.concatenate((Y_train,Y_protoset))
 
         # Generate the mapped labels, according the order list
@@ -501,7 +526,7 @@ class BaseTrainer(object):
         Returns:
           b1_model: the 1st branch model from the current phase, the FC classifier is updated
         """
-        if self.args.dataset == 'cifar100':
+        if self.args.dataset == 'cifar100' or self.args.dataset == 'skin7':
             # Load previous FC weights, transfer them from GPU to CPU
             old_embedding_norm = b1_model.fc.fc1.weight.data.norm(dim=1, keepdim=True)
             average_old_embedding_norm = torch.mean(old_embedding_norm, dim=0).to('cpu').type(torch.DoubleTensor)
@@ -585,7 +610,7 @@ class BaseTrainer(object):
           testloader: the test dataloader
         """
         print('Setting the dataloaders ...')
-        if self.args.dataset == 'cifar100': #3 place that change dataset should change
+        if self.args.dataset == 'cifar100' or self.args.dataset == "skin7": #key
             # Set the training dataloader
             self.trainset.data = X_train.astype('uint8')
             self.trainset.targets = map_Y_train
@@ -665,6 +690,7 @@ class BaseTrainer(object):
             tg_params_new =[{'params': base_params, 'lr': branch1_lr, 'weight_decay': branch1_weight_decay}, \
                 {'params': b2_params, 'lr': branch2_lr, 'weight_decay': branch2_weight_decay}, \
                 {'params': b1_model.fc.fc1.parameters(), 'lr': 0, 'weight_decay': 0}]
+            #if not fixed, b1 and b2 has same lr
 
             # Transfer the 1st branch model to the GPU
             b1_model = b1_model.to(self.device)
@@ -673,7 +699,7 @@ class BaseTrainer(object):
             tg_optimizer = optim.SGD(tg_params_new, lr=self.args.base_lr2, momentum=self.args.custom_momentum, weight_decay=self.args.custom_weight_decay)
          
             # Set the optimizer for the aggregation weights
-            if self.args.branch_mode == 'dual':
+            if self.args.branch_mode == 'dual':#fusion lr is small, avoiding the first branch weight shakes too much
                 # Dual branch mode, load the learning rate for the aggregation weights from the config
                 fusion_optimizer = optim.SGD(self.fusion_vars, lr=self.args.fusion_lr, momentum=self.args.custom_momentum, weight_decay=self.args.custom_weight_decay)
             elif self.args.branch_mode == 'single':
@@ -695,10 +721,10 @@ class BaseTrainer(object):
                 raise ValueError('Please set the correct mode.')
 
         # Set the learning rate decay scheduler
-        if self.args.dataset == 'cifar100': #4th place that change dataset should change
+        if self.args.dataset == 'cifar100' : # key
             tg_lr_scheduler = lr_scheduler.MultiStepLR(tg_optimizer, milestones=self.lr_strat, gamma=self.args.lr_factor)
             fusion_lr_scheduler = lr_scheduler.MultiStepLR(fusion_optimizer, milestones=self.lr_strat, gamma=self.args.lr_factor)
-        elif self.args.dataset == 'imagenet_sub' or self.args.dataset == 'imagenet':
+        elif self.args.dataset == 'imagenet_sub' or self.args.dataset == 'imagenet' or self.args.dataset == 'skin7':
             tg_lr_scheduler = lr_scheduler.CosineAnnealingLR(tg_optimizer, self.args.epochs)        
             fusion_lr_scheduler = lr_scheduler.MultiStepLR(fusion_optimizer, milestones=self.lr_strat, gamma=self.args.lr_factor)
         else:
@@ -717,7 +743,7 @@ class BaseTrainer(object):
         Return:
           balancedloader: the balanced dataloader for the exemplars
         """
-        if self.args.dataset == 'cifar100':
+        if self.args.dataset == 'cifar100' or self.args.dataset == "skin7": #key
             # Load the training samples for the current phase
             X_train_this_step = X_train_total[indices_train_10]
             Y_train_this_step = Y_train_total[indices_train_10]
@@ -788,7 +814,7 @@ class BaseTrainer(object):
         map_Y_valid_ori = np.array([order_list.index(i) for i in Y_valid_ori])
         print('Computing accuracy on the 0-th phase classes...')
         # Set a temporary dataloader for the 0-th phase data
-        if self.args.dataset == 'cifar100':#6 place that should change if dataset change
+        if self.args.dataset == 'cifar100' or self.args.dataset == 'skin7':#key
             self.evalset.data = X_valid_ori.astype('uint8')
             self.evalset.targets = map_Y_valid_ori
             pin_memory = False
@@ -813,7 +839,7 @@ class BaseTrainer(object):
         map_Y_valid_cumul = np.array([order_list.index(i) for i in Y_valid_cumul])
         # Set a temporary dataloader for the current-phase data
         print('Computing cumulative accuracy...')
-        if self.args.dataset == 'cifar100':#6 place that should change if dataset change
+        if self.args.dataset == 'cifar100' or self.args.dataset == 'skin7':
             self.evalset.data = X_valid_cumul.astype('uint8')
             self.evalset.targets = map_Y_valid_cumul
         elif self.args.dataset == 'imagenet_sub' or self.args.dataset == 'imagenet':  
@@ -864,7 +890,7 @@ class BaseTrainer(object):
         tg_feature_model = nn.Sequential(*list(b1_model.children())[:-1])
         # Get the shape for the feature maps
         num_features = b1_model.fc.in_features
-        if self.args.dataset == 'cifar100':#5 place that should change if change the dataset
+        if self.args.dataset == 'cifar100' or self.args.dataset == 'skin7':#key
             for iter_dico in range(last_iter*self.args.nb_cl, (iteration+1)*self.args.nb_cl):
                 # Set a temporary dataloader for the current class
                 self.evalset.data = prototypes[iter_dico].astype('uint8')
@@ -928,7 +954,7 @@ class BaseTrainer(object):
         # Set two empty lists for the exemplars and the labels 
         X_protoset_cumuls = []
         Y_protoset_cumuls = []
-        if self.args.dataset == 'cifar100':
+        if self.args.dataset == 'cifar100' or self.args.dataset == 'skin7':
             if self.args.image_size == 224:
                 class_means = np.zeros((num_features,100,2))
             else:

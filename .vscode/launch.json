@@ -27,10 +27,15 @@
             // "--baseline","lucir","--branch_mode","dual","--branch_1","ss",
             // "--branch_2","free","--dataset","skin40","--epochs","10",
             // "--disable_gpu_occupancy", "--image_size", "224","--K","5"]
-            "args": ["--nb_cl_fg","2","--nb_cl","1","--gpu","2","--random_seed","32",
+        //     "args": ["--nb_cl_fg","2","--nb_cl","1","--gpu","4","--random_seed","32",
+        //     "--baseline","lucir","--branch_mode","dual","--branch_1","ss",
+        //     "--branch_2","free","--dataset","skin40","--epochs","10",
+        //     "--disable_gpu_occupancy", "--image_size", "224","--K","1","--num_classes","40",
+        // "--custom_weight_decay","0.0005","--the_lambda","10","--dist","0.5"]
+            "args": ["--nb_cl_fg","5","--nb_cl","5","--gpu","3","--random_seed","32",
             "--baseline","lucir","--branch_mode","dual","--branch_1","ss",
-            "--branch_2","free","--dataset","skin40","--epochs","10",
-            "--disable_gpu_occupancy", "--image_size", "224","--K","1","--num_classes","40",
+            "--branch_2","free","--dataset","cub200","--epochs","10",
+            "--disable_gpu_occupancy", "--image_size", "224","--K","1","--num_classes","200",
         "--custom_weight_decay","0.0005","--the_lambda","10","--dist","0.5"]
         }
     ]

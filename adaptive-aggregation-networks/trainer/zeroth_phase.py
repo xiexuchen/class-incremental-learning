@@ -76,7 +76,7 @@ def incremental_train_and_eval_zeroth_phase(the_args, epochs, b1_model, ref_mode
         mcr = calculate_mean_class_recall(all_label, all_pred)
             
         # Print the training losses and accuracies
-        if the_args.dataset == "skin7" or the_args.dataset == "skin40":
+        if the_args.dataset == "skin7" or the_args.dataset == "skin40" or the_args.dataset == "cub200" :
             print('Train set: {}, train loss: {:.4f} accuracy: {:.4f}, mcr:{:.4f}'.format(len(trainloader), train_loss/(batch_idx+1), 100.*correct/total,100.*mcr))
         else:
             print('Train set: {}, train loss: {:.4f} accuracy: {:.4f}'.format(len(trainloader), train_loss/(batch_idx+1), 100.*correct/total))
@@ -101,7 +101,7 @@ def incremental_train_and_eval_zeroth_phase(the_args, epochs, b1_model, ref_mode
                 correct += predicted.eq(targets).sum().item()
         mcr = calculate_mean_class_recall(all_label, all_pred)#recalculate because now is test time
         
-        if the_args.dataset == "skin7" or the_args.dataset == "skin40":
+        if the_args.dataset == "skin7" or the_args.dataset == "skin40" or the_args.dataset == "cub200" :
             print('Test set: {} test loss: {:.4f} accuracy: {:.4f}, mcr:{:.4f}'.format(len(testloader), test_loss/(batch_idx+1), \
                 100.*correct/total, 100.*mcr ))
         else:

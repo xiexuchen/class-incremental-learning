@@ -94,8 +94,12 @@ class Trainer(BaseTrainer):
         b2_model = None
         ref_b2_model = None
         the_lambda_mult = None
-
-        for iteration in range(start_iter, int(self.args.num_classes/self.args.nb_cl)): #e.g: 50 10, start: 4 end: 10
+        if self.args.dataset == "skin7" and self.args.nb_cl == 2:
+            end_class = int(self.args.num_classes/self.args.nb_cl) + 1
+        else:
+            end_class = int(self.args.num_classes/self.args.nb_cl)
+            
+        for iteration in range(start_iter, end_class): #e.g: 50 10, start: 4 end: 10
             #iteration means task
             ### Initialize models for the current phase
             b1_model, b2_model, ref_model, ref_b2_model, lambda_mult, cur_lambda, last_iter = self.init_current_phase_model(iteration, start_iter, b1_model, b2_model)
@@ -183,9 +187,9 @@ class Trainer(BaseTrainer):
             num_of_testing = iteration - start_iter + 1
             avg_cumul_acc_fc = np.sum(top1_acc_list_cumul[start_iter:,0])/num_of_testing
             avg_cumul_acc_icarl = np.sum(top1_acc_list_cumul[start_iter:,1])/num_of_testing
-            print('Computing average accuracy...')
+            print('Computing average accuracy...') #here is the average final accuracy
             print("  Average accuracy (FC)         :\t\t{:.2f} %".format(avg_cumul_acc_fc)) #should consider this metric as average final accuracy
-            print("  Average accuracy (Proto)      :\t\t{:.2f} %".format(avg_cumul_acc_icarl))
+            print("  Average accuracy (Proto)      :\t\t{:.2f} %".format(avg_cumul_acc_icarl)) 
 
             # Write the results to the tensorboard
             self.train_writer.add_scalar('avg_acc/fc', float(avg_cumul_acc_fc), iteration)

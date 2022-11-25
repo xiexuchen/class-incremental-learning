@@ -95,8 +95,8 @@ def compute_accuracy(the_args, fusion_vars, b1_model, b2_model, tg_feature_model
             score_ncm = torch.from_numpy((-sqd_ncm).T).to(device)
             _, predicted_ncm = score_ncm.max(1)
             correct_ncm += predicted_ncm.eq(targets).sum().item()
-    if the_args.dataset == "skin7" or the_args.dataset == "skin40": #key
-        mcr = calculate_mean_class_recall(all_pred ,all_label)
+    if the_args.dataset == "skin7" or the_args.dataset == "skin40" or the_args.dataset == "cub200": #key
+        mcr = calculate_mean_class_recall(all_label, all_pred)
     else:
         mcr = 0.0
     if print_info:

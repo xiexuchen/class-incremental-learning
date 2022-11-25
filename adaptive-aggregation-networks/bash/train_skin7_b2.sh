@@ -1,8 +1,8 @@
 #!/bin/bash
-PYTHON='/data/xuchen/anaconda3/bin/python'
+PYTHON='/home/21/xuchen/Storage/anaconda3/bin/python'
 
 for seed in 32 40 50; do
-    for incre in 1 2; do
+    for incre in 2 1; do
         ${PYTHON} ../main.py --nb_cl_fg=2 --nb_cl=${incre} \
         --gpu=2 --random_seed=${seed} --baseline="lucir" \
         --branch_mode="dual" --branch_1="ss" --branch_2="free" \

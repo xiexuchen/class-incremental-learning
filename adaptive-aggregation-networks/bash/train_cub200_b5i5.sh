@@ -2,7 +2,7 @@
 PYTHON='/home/21/xuchen/Storage/anaconda3/bin/python'
 
 for seed in 32 40 50; do
-    for incre in 5; do
+    for incre in 5 10; do
         ${PYTHON} ../main.py --nb_cl_fg=${incre} --nb_cl=${incre} \
         --gpu=0 --random_seed=${seed} --baseline="lucir" \
         --branch_mode="dual" --branch_1="ss" --branch_2="free" \

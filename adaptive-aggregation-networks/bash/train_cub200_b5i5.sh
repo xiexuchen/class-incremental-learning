@@ -1,5 +1,5 @@
 #!/bin/bash
-PYTHON='/home/21/xuchen/Storage/anaconda3/bin/python'
+PYTHON='/public/home/daijiahao/anaconda3/bin/python'
 
 for seed in 32 40 50; do
     for incre in 5 10; do

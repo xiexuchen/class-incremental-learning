@@ -333,7 +333,7 @@ class BaseTrainer(object):
         # Transfer the array to a list
         order_list = list(order)
         if self.args.dataset == "cub200":
-            assert len(order_list) != 190
+            assert len(order_list) == 190
         # Print the class order
         print(order_list)
         return order, order_list

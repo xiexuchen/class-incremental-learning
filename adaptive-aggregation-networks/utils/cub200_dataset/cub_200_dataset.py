@@ -35,7 +35,7 @@ class CUB_200(Dataset):
         target = []
         self.classes_name = dataset.classes
         for item in samples:
-            print(item[1])
+            # print(item[1])
             if item[1] not in except_list:
                 image = pil_loader(item[0])
                 data.append(image)

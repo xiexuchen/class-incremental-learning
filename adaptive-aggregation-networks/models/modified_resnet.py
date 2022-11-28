@@ -185,7 +185,7 @@ class ResNet(nn.Module):
 
         return x
 
-def resnet18(pretrained=True, **kwargs):
+def resnet18(pretrained=False, **kwargs):
     model = ResNet(BasicBlock, [2, 2, 2, 2], **kwargs)
     if pretrained:
         model = load_pretrained_model(model, pretrained="resnet18")

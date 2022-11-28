@@ -7,6 +7,6 @@ for seed in 32 40 50; do
         --gpu=1 --random_seed=${seed} --baseline="lucir" \
         --branch_mode="dual" --branch_1="ss" --branch_2="free" \
         --dataset="cub200" --epochs=90 --image_size=224 --disable_gpu_occupancy \
-        --num_classes=200 --K=1 --the_lambda=10 --dist=0.5 --custom_weight_decay=0.0005
+        --num_classes=190 --K=1 --the_lambda=10 --dist=0.5 --custom_weight_decay=0.0005
     done
 done
